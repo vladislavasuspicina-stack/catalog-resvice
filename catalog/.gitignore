@@ -1,0 +1,6 @@
+# Build artifacts
+*.exe
+
+# Local runtime data
+response.json
+orders/
