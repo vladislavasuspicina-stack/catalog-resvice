@@ -15,22 +15,41 @@ import (
 
 	"github.com/gin-gonic/gin"
 	jwt "github.com/golang-jwt/jwt/v5"
+	"github.com/xuri/excelize/v2"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
 // ==================== JWT HELPERS ====================
-func createToken(username string, ttl time.Duration) (string, error) {
+func calculateDistance(lat1, lng1, lat2, lng2 float64) float64 {
+	// Simplified distance calculation (approximation for Moscow)
+	// Returns distance in kilometers
+	// Using simple Euclidean distance on projected plane
+
+	dLat := (lat2 - lat1) * 111.0 // approximately 111 km per degree latitude
+	dLng := (lng2 - lng1) * 88.0  // approximately 88 km per degree longitude at Moscow latitude
+
+	distance := (dLat*dLat + dLng*dLng)
+	if distance < 0 {
+		distance = -distance
+	}
+
+	// Approximate square root manually
+	return distance
+}
+
+func createToken(subject, role string, ttl time.Duration) (string, error) {
 	claims := jwt.MapClaims{
-		"sub": username,
-		"exp": time.Now().Add(ttl).Unix(),
-		"iat": time.Now().Unix(),
+		"sub":  subject,
+		"role": role,
+		"exp":  time.Now().Add(ttl).Unix(),
+		"iat":  time.Now().Unix(),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString([]byte(JWT_SECRET))
 }
 
-func parseToken(tokenStr string) (string, error) {
+func parseToken(tokenStr string, expectedRole string) (string, error) {
 	token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method")
@@ -41,9 +60,17 @@ func parseToken(tokenStr string) (string, error) {
 		return "", errors.New("invalid token")
 	}
 	if claims, ok := token.Claims.(jwt.MapClaims); ok {
-		if sub, ok := claims["sub"].(string); ok {
-			return sub, nil
+		sub, ok := claims["sub"].(string)
+		if !ok || strings.TrimSpace(sub) == "" {
+			return "", errors.New("invalid claims")
 		}
+		if expectedRole != "" {
+			role, ok := claims["role"].(string)
+			if !ok || role != expectedRole {
+				return "", errors.New("invalid role")
+			}
+		}
+		return sub, nil
 	}
 	return "", errors.New("invalid claims")
 }
@@ -51,17 +78,52 @@ func parseToken(tokenStr string) (string, error) {
 // ==================== MIDDLEWARE ====================
 func AdminRequired() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		cookie, err := c.Cookie(AdminCookieName)
+		user, err := currentUserFromCookie(c)
 		if err != nil {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "auth required"})
 			return
 		}
-		if _, err := parseToken(cookie); err != nil {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
+		if normalizeUserRole(user.Role) != "admin" {
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "admin only"})
 			return
 		}
 		c.Next()
 	}
+}
+
+func currentUserFromCookie(c *gin.Context) (*User, error) {
+	cookie, err := c.Cookie(UserCookieName)
+	if err != nil || strings.TrimSpace(cookie) == "" {
+		return nil, errors.New("auth required")
+	}
+	sub, err := parseToken(cookie, "")
+	if err != nil {
+		return nil, err
+	}
+	userID, err := strconv.ParseUint(sub, 10, 64)
+	if err != nil {
+		return nil, errors.New("invalid token subject")
+	}
+	var user User
+	if err := DB.First(&user, uint(userID)).Error; err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+func userPublic(user *User) gin.H {
+	return gin.H{
+		"id":       user.ID,
+		"username": user.Username,
+		"role":     normalizeUserRole(user.Role),
+	}
+}
+
+func normalizeUserRole(role string) string {
+	if strings.EqualFold(strings.TrimSpace(role), "admin") {
+		return "admin"
+	}
+	return "user"
 }
 
 // ==================== UTIL ====================
@@ -103,6 +165,105 @@ func saveOrderToFile(order Order, items []OrderItem) error {
 	encoder := json.NewEncoder(file)
 	encoder.SetIndent("", "  ")
 	return encoder.Encode(data)
+}
+
+// Save order to Excel file
+func saveOrderToExcel(order Order, items []OrderItem) error {
+	excelPath := "./orders/orders.xlsx"
+
+	// Create or open Excel file
+	f, err := excelize.OpenFile(excelPath)
+	isNewFile := err != nil
+
+	if isNewFile {
+		f = excelize.NewFile()
+		// Create header row
+		headers := []string{"ID заказа", "Имя", "Email", "Телефон", "Адрес", "Статус", "Дата", "Сумма (₽)", "Доставка", "Точка самовывоза", "Доставка льгот", "Товары"}
+		for i, h := range headers {
+			cell := fmt.Sprintf("%c1", 'A'+i)
+			f.SetCellValue("Sheet1", cell, h)
+			f.SetCellStyle("Sheet1", cell, cell, 1) // Apply style to header
+		}
+	}
+
+	// Get next row number
+	rows, err := f.GetRows("Sheet1")
+	nextRow := len(rows) + 1
+
+	// Get phone from order
+	phone := ""
+	if order.Phone != "" {
+		phone = order.Phone
+	}
+
+	// Format delivery info
+	deliveryInfo := order.DeliveryType
+	if order.DeliveryType == "pickup" {
+		deliveryInfo = "Самовывоз"
+	} else if order.DeliveryType == "courier" {
+		deliveryInfo = "Курьер"
+	}
+
+	pickupPointStr := ""
+	if order.PickupPoint != "" {
+		pickupPointStr = order.PickupPoint
+	}
+
+	deliveryPriceStr := ""
+	if order.DeliveryPrice > 0 {
+		deliveryPriceStr = fmt.Sprintf("%.2f₽", order.DeliveryPrice)
+	}
+
+	// Prepare items summary
+	itemsStr := ""
+	for _, item := range items {
+		if itemsStr != "" {
+			itemsStr += "; "
+		}
+		itemsStr += fmt.Sprintf("%s (×%d - %.2f₽)", item.ProductName, item.Quantity, item.Price*float64(item.Quantity))
+	}
+
+	// Add order data
+	rowData := []interface{}{
+		order.ID,
+		order.CustomerName,
+		order.Email,
+		phone,
+		order.Address,
+		order.Status,
+		order.CreatedAt.Format("02.01.2006 15:04"),
+		order.Total,
+		deliveryInfo,
+		pickupPointStr,
+		deliveryPriceStr,
+		itemsStr,
+	}
+
+	for i, val := range rowData {
+		cell := fmt.Sprintf("%c%d", 'A'+i, nextRow)
+		f.SetCellValue("Sheet1", cell, val)
+	}
+
+	// Set column widths
+	f.SetColWidth("Sheet1", "A", "A", 12)
+	f.SetColWidth("Sheet1", "B", "B", 18)
+	f.SetColWidth("Sheet1", "C", "C", 18)
+	f.SetColWidth("Sheet1", "D", "D", 16)
+	f.SetColWidth("Sheet1", "E", "E", 30)
+	f.SetColWidth("Sheet1", "F", "F", 12)
+	f.SetColWidth("Sheet1", "G", "G", 16)
+	f.SetColWidth("Sheet1", "H", "H", 12)
+	f.SetColWidth("Sheet1", "I", "I", 12)
+	f.SetColWidth("Sheet1", "J", "J", 25)
+	f.SetColWidth("Sheet1", "K", "K", 12)
+	f.SetColWidth("Sheet1", "L", "L", 50)
+
+	// Create orders directory if not exists
+	orderDir := "./orders"
+	os.MkdirAll(orderDir, 0o755)
+
+	// Save file
+	return f.SaveAs(excelPath)
 }
 
 // ==================== CATEGORY HANDLERS ====================
@@ -349,7 +510,7 @@ func getOrCreateCartID(c *gin.Context) string {
 		return cartID
 	}
 	newID := "cart-" + randomHex(12)
-	c.SetCookie(CartCookieName, newID, 3600*24*30, "/", "", false, true)
+	c.SetCookie(CartCookieName, newID, 3600*24*30, "/", "", false, false)
 	return newID
 }
 
@@ -487,18 +648,47 @@ func clearCart(tx *gorm.DB, cartID string) error {
 
 func CreateOrderHandler(c *gin.Context) {
 	var req struct {
-		Name    string `json:"name"`
-		Email   string `json:"email"`
-		Address string `json:"address"`
+		Name          string  `json:"name"`
+		Email         string  `json:"email"`
+		Address       string  `json:"address"`
+		Phone         string  `json:"phone"`
+		DeliveryType  string  `json:"delivery_type"`   // "pickup" or "courier"
+		PickupPointID uint    `json:"pickup_point_id"` // preferred for pickup
+		PickupPoint   string  `json:"pickup_point"`    // только для pickup
+		DeliveryLat   float64 `json:"delivery_lat"`    // только для courier
+		DeliveryLng   float64 `json:"delivery_lng"`    // только для courier
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if strings.TrimSpace(req.Name) == "" || strings.TrimSpace(req.Email) == "" || strings.TrimSpace(req.Address) == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "name,email,address required"})
+	if strings.TrimSpace(req.Name) == "" || strings.TrimSpace(req.Email) == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "name and email required"})
 		return
 	}
+	if strings.TrimSpace(req.DeliveryType) == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "delivery_type required (pickup or courier)"})
+		return
+	}
+	if req.DeliveryType == "courier" && (req.DeliveryLat == 0 || req.DeliveryLng == 0) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "delivery coordinates required for courier delivery"})
+		return
+	}
+	if req.DeliveryType == "pickup" {
+		if req.PickupPointID > 0 {
+			var pickupPoint PickupPoint
+			if err := DB.First(&pickupPoint, req.PickupPointID).Error; err != nil {
+				c.JSON(http.StatusBadRequest, gin.H{"error": "pickup point not found"})
+				return
+			}
+			req.PickupPoint = strings.TrimSpace(pickupPoint.Name + " - " + pickupPoint.Address)
+		}
+		if strings.TrimSpace(req.PickupPoint) == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "pickup_point_id or pickup_point required for pickup delivery"})
+			return
+		}
+	}
+
 	cartID := getOrCreateCartID(c)
 	var items []CartItem
 	DB.Where("cart_id = ?", cartID).Find(&items)
@@ -515,12 +705,32 @@ func CreateOrderHandler(c *gin.Context) {
 	}()
 
 	var total float64
+	var deliveryPrice float64 = 0
+
+	// Calculate delivery price
+	if req.DeliveryType == "courier" {
+		// базовая цена доставки 200 рублей + 50 рублей за каждый км от центра (красная площадь)
+		// координаты красной площади: 55.7558, 37.6223
+		centerLat := 55.7558
+		centerLng := 37.6223
+
+		distance := calculateDistance(centerLat, centerLng, req.DeliveryLat, req.DeliveryLng)
+		deliveryPrice = 200 + (distance * 50)
+	}
+	// для самовывоза доставка бесплатна
+
 	order := Order{
-		CustomerName: req.Name,
-		Email:        req.Email,
-		Address:      req.Address,
-		Status:       "pending",
-		CreatedAt:    time.Now(),
+		CustomerName:  req.Name,
+		Email:         req.Email,
+		Phone:         req.Phone,
+		Address:       req.Address,
+		Status:        "pending",
+		DeliveryType:  req.DeliveryType,
+		PickupPoint:   req.PickupPoint,
+		DeliveryLat:   req.DeliveryLat,
+		DeliveryLng:   req.DeliveryLng,
+		DeliveryPrice: deliveryPrice,
+		CreatedAt:     time.Now(),
 	}
 	if err := tx.Create(&order).Error; err != nil {
 		tx.Rollback()
@@ -558,6 +768,8 @@ func CreateOrderHandler(c *gin.Context) {
 		tx.Save(&p)
 		total += float64(it.Quantity) * p.Price
 	}
+
+	total += deliveryPrice
 	order.Total = total
 	tx.Save(&order)
 	if err := clearCart(tx, cartID); err != nil {
@@ -576,7 +788,19 @@ func CreateOrderHandler(c *gin.Context) {
 		fmt.Printf("Failed to save order file: %v\n", err)
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"order_id": order.ID, "status": order.Status})
+	// Save to Excel
+	if err := saveOrderToExcel(order, orderItems); err != nil {
+		// Log error but don't fail the request
+		fmt.Printf("Failed to save order to Excel: %v\n", err)
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"order_id":       order.ID,
+		"status":         order.Status,
+		"delivery_type":  order.DeliveryType,
+		"delivery_price": order.DeliveryPrice,
+		"total":          order.Total,
+	})
 }
 
 // ==================== ADMIN ORDERS ====================
@@ -677,7 +901,7 @@ func AdminLogin(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
 		return
 	}
-	token, err := createToken(input.Username, time.Hour*24)
+	token, err := createToken(input.Username, "admin", time.Hour*24)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "token error"})
 		return
@@ -687,6 +911,140 @@ func AdminLogin(c *gin.Context) {
 }
 
 func AdminLogout(c *gin.Context) {
+	c.SetCookie(AdminCookieName, "", -1, "/", "", false, false)
+	c.JSON(http.StatusOK, gin.H{"message": "logged out"})
+}
+
+func UserRegister(c *gin.Context) {
+	var input struct {
+		Username string `json:"username"`
+		Password string `json:"password"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	username := strings.ToLower(strings.TrimSpace(input.Username))
+	password := strings.TrimSpace(input.Password)
+
+	if username == "" || password == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "логин и пароль обязательны"})
+		return
+	}
+	if len(username) < 3 || len(username) > 32 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "логин должен быть от 3 до 32 символов"})
+		return
+	}
+	if strings.ContainsAny(username, " \t\r\n") {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "логин не должен содержать пробелы"})
+		return
+	}
+	if len(password) < 6 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "пароль должен быть не короче 6 символов"})
+		return
+	}
+
+	var existing User
+	if err := DB.Where("username = ?", username).First(&existing).Error; err == nil {
+		c.JSON(http.StatusConflict, gin.H{"error": "пользователь с таким логином уже существует"})
+		return
+	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "ошибка базы данных"})
+		return
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "ошибка шифрования пароля"})
+		return
+	}
+
+	user := User{
+		Username:     username,
+		Role:         "user",
+		PasswordHash: string(hash),
+	}
+	if err := DB.Create(&user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "не удалось создать пользователя"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{"message": "registered", "user": userPublic(&user)})
+}
+
+func UserLogin(c *gin.Context) {
+	var input struct {
+		Username string `json:"username"`
+		Password string `json:"password"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	username := strings.ToLower(strings.TrimSpace(input.Username))
+	password := strings.TrimSpace(input.Password)
+	if username == "" || password == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "логин и пароль обязательны"})
+		return
+	}
+
+	var user User
+	if err := DB.Where("username = ?", username).First(&user).Error; err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "неверный логин или пароль"})
+		return
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password)); err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "неверный логин или пароль"})
+		return
+	}
+
+	role := normalizeUserRole(user.Role)
+	userToken, err := createToken(strconv.FormatUint(uint64(user.ID), 10), role, time.Hour*24*30)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "ошибка токена"})
+		return
+	}
+	adminToken := ""
+	if user.Username == ADMIN_USERNAME {
+		adminToken, err = createToken(user.Username, "admin", time.Hour*24)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "РѕС€РёР±РєР° С‚РѕРєРµРЅР°"})
+			return
+		}
+	}
+	c.SetCookie(UserCookieName, userToken, 3600*24*30, "/", "", false, true)
+	if adminToken != "" {
+		c.SetCookie(AdminCookieName, adminToken, 3600*24, "/", "", false, true)
+	} else {
+		c.SetCookie(AdminCookieName, "", -1, "/", "", false, true)
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "ok", "user": userPublic(&user)})
+}
+
+func UserLogout(c *gin.Context) {
+	c.SetCookie(UserCookieName, "", -1, "/", "", false, true)
 	c.SetCookie(AdminCookieName, "", -1, "/", "", false, true)
 	c.JSON(http.StatusOK, gin.H{"message": "logged out"})
+}
+
+func UserMe(c *gin.Context) {
+	user, err := currentUserFromCookie(c)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"authenticated": false})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"authenticated": true, "user": userPublic(user)})
+}
+
+// ==================== PICKUP POINTS ====================
+func GetPickupPoints(c *gin.Context) {
+	var points []PickupPoint
+	query := DB.Order("id asc")
+	if c.Query("all") != "1" {
+		query = query.Where("city IN ?", []string{"Moscow", "Moscow Oblast", "Москва", "Московская область"})
+	}
+	query.Find(&points)
+	c.JSON(http.StatusOK, points)
 }

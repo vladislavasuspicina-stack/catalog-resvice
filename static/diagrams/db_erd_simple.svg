@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1320" height="760" viewBox="0 0 1320 760">
+
+<defs>
+  <marker id="arr" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto" markerUnits="strokeWidth">
+    <path d="M0,0 L10,4 L0,8 z" fill="#334155" />
+  </marker>
+  <style>
+    .h { font-family: Segoe UI, Arial, sans-serif; font-size: 30px; font-weight: 800; fill: #0f172a; }
+    .t { font-family: Segoe UI, Arial, sans-serif; font-size: 14px; fill: #334155; }
+    .box { fill: #ffffff; stroke: #0f172a; stroke-width: 2; rx: 12; }
+  </style>
+</defs>
+
+<rect x="0" y="0" width="100%" height="100%" fill="#f8fafc"/>
+<text class="h" x="40" y="48">Catalog Service - Logical Data Model</text>
+<rect class="box" x="60" y="120" width="250" height="90"/>
+<text class="t" x="78" y="170" style="font-size:22px;font-weight:700;fill:#111827">categories</text>
+<rect class="box" x="380" y="120" width="250" height="90"/>
+<text class="t" x="398" y="170" style="font-size:22px;font-weight:700;fill:#111827">products</text>
+<rect class="box" x="700" y="120" width="250" height="90"/>
+<text class="t" x="718" y="170" style="font-size:22px;font-weight:700;fill:#111827">cart_items</text>
+<rect class="box" x="1010" y="120" width="250" height="90"/>
+<text class="t" x="1028" y="170" style="font-size:22px;font-weight:700;fill:#111827">orders + order_items</text>
+<rect class="box" x="220" y="360" width="250" height="90"/>
+<text class="t" x="238" y="410" style="font-size:22px;font-weight:700;fill:#111827">users</text>
+<rect class="box" x="700" y="360" width="250" height="90"/>
+<text class="t" x="718" y="410" style="font-size:22px;font-weight:700;fill:#111827">pickup_points</text>
+<path d="M 310 165 C 345 165, 345 165, 380 165" fill="none" stroke="#0ea5e9" stroke-width="3" marker-end="url(#arr)"/>
+<text class="t" x="320" y="152">1..N</text>
+<path d="M 630 165 C 665 165, 665 165, 700 165" fill="none" stroke="#22c55e" stroke-width="3" marker-end="url(#arr)"/>
+<text class="t" x="640" y="152">1..N</text>
+<path d="M 950 165 C 980 165, 980 165, 1010 165" fill="none" stroke="#f97316" stroke-width="3" marker-end="url(#arr)"/>
+<text class="t" x="960" y="152">1..N</text>
+<path d="M 950 400 C 1000 380, 1100 280, 1130 210" fill="none" stroke="#64748b" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#arr)"/>
+<text class="t" x="972" y="320">app-level mapping</text>
+<text class="t" x="60" y="540">AutoMigrate models: Category, Product, User, CartItem, Order, OrderItem, PickupPoint</text>
+<text class="t" x="60" y="568">SQLite file: catalog/catalog.db</text>
+</svg>

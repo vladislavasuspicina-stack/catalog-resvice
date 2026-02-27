@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"html/template"
 	"net/http"
+	"net/url"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -24,6 +26,13 @@ func main() {
 	r.POST("/cart/remove", RemoveFromCart)
 	r.GET("/cart", GetCart)
 	r.POST("/order", CreateOrderHandler)
+	r.GET("/pickup-points", GetPickupPoints)
+
+	// Customer auth
+	r.POST("/auth/register", UserRegister)
+	r.POST("/auth/login", UserLogin)
+	r.POST("/auth/logout", UserLogout)
+	r.GET("/auth/me", UserMe)
 
 	// Admin auth
 	r.POST("/admin/login", AdminLogin)
@@ -54,21 +63,43 @@ func main() {
 	template.Must(t.New("admin").Parse(adminHTML))
 	template.Must(t.New("product").Parse(productHTML))
 	template.Must(t.New("cart").Parse(cartHTML))
+	template.Must(t.New("auth").Parse(authHTML))
 	r.SetHTMLTemplate(t)
 
-	r.GET("/", func(c *gin.Context) {
+	r.GET("/auth", func(c *gin.Context) {
+		next := sanitizeNextPath(c.DefaultQuery("next", "/"))
+		if _, err := currentUserFromCookie(c); err == nil {
+			c.Redirect(http.StatusFound, next)
+			return
+		}
+		c.HTML(http.StatusOK, "auth", gin.H{"next": next})
+	})
+
+	renderShopPage := func(c *gin.Context) {
+		if _, err := currentUserFromCookie(c); err != nil {
+			redirectToAuth(c)
+			return
+		}
+
 		var categories []Category
 		var products []Product
 		DB.Find(&categories)
 		DB.Order("id asc").Limit(12).Find(&products)
 		c.HTML(http.StatusOK, "index", gin.H{"categories": categories, "products": products})
-	})
+	}
+	r.GET("/", renderShopPage)
+	r.GET("/shop", renderShopPage)
 
 	r.GET("/product/:id", func(c *gin.Context) {
+		if _, err := currentUserFromCookie(c); err != nil {
+			redirectToAuth(c)
+			return
+		}
+
 		id := c.Param("id")
 		var p Product
 		if err := DB.First(&p, id).Error; err != nil {
-			c.String(http.StatusNotFound, "Товар не найден")
+			c.String(http.StatusNotFound, "product not found")
 			return
 		}
 		c.HTML(http.StatusOK, "product", gin.H{"product": p})
@@ -76,14 +107,21 @@ func main() {
 
 	// Cart page (separate view)
 	r.GET("/cart/view", func(c *gin.Context) {
+		if _, err := currentUserFromCookie(c); err != nil {
+			redirectToAuth(c)
+			return
+		}
 		c.HTML(http.StatusOK, "cart", nil)
 	})
 
 	r.GET("/admin", func(c *gin.Context) {
-		_, err := c.Cookie(AdminCookieName)
+		user, err := currentUserFromCookie(c)
 		if err != nil {
-			c.Header("Content-Type", "text/html; charset=utf-8")
-			c.String(http.StatusOK, adminLoginPage())
+			c.Redirect(http.StatusFound, "/auth?next="+url.QueryEscape("/admin"))
+			return
+		}
+		if normalizeUserRole(user.Role) != "admin" {
+			c.String(http.StatusForbidden, "доступ только для админа")
 			return
 		}
 		c.Header("Content-Type", "text/html; charset=utf-8")
@@ -96,20 +134,36 @@ func main() {
 	r.Run(":8080")
 }
 
+func sanitizeNextPath(next string) string {
+	next = strings.TrimSpace(next)
+	if next == "" || !strings.HasPrefix(next, "/") || strings.HasPrefix(next, "//") {
+		return "/"
+	}
+	if next == "/" || next == "/shop" || next == "/cart/view" || next == "/admin" || strings.HasPrefix(next, "/product/") {
+		return next
+	}
+	return "/"
+}
+
+func redirectToAuth(c *gin.Context) {
+	next := sanitizeNextPath(c.Request.URL.RequestURI())
+	c.Redirect(http.StatusFound, "/auth?next="+url.QueryEscape(next))
+}
+
 // ==================== SIMPLE LOGIN PAGE ====================
 func adminLoginPage() string {
 	return `<!doctype html><html><head><meta charset="utf-8"><title>Admin login</title></head><body>
-<h2>Вход в админку</h2>
+<h2>Admin login</h2>
 <form id="f">
 <input id="u" placeholder="username"><br><br>
 <input id="p" placeholder="password" type="password"><br><br>
-<button type="button" onclick="login()">Войти</button>
+<button type="button" onclick="login()">Login</button>
 </form>
 <script>
 async function login(){
   const u=document.getElementById('u').value;
   const p=document.getElementById('p').value;
-  const r=await fetch('/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})});
+  const r=await fetch('/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p}),credentials:'include'});
   if(r.ok){ location.href='/admin'; } else { alert('auth failed'); }
 }
 </script>

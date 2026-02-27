@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1880" height="1160" viewBox="0 0 1880 1160">
+
+<defs>
+  <marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto" markerUnits="strokeWidth">
+    <path d="M0,0 L10,4 L0,8 z" fill="#334155" />
+  </marker>
+  <style>
+    .title { font-family: Segoe UI, Arial, sans-serif; font-size: 32px; font-weight: 800; fill: #0f172a; }
+    .subtitle { font-family: Segoe UI, Arial, sans-serif; font-size: 16px; fill: #334155; }
+    .legend { font-family: Segoe UI, Arial, sans-serif; font-size: 14px; fill: #1f2937; }
+  </style>
+</defs>
+
+<rect x="0" y="0" width="100%" height="100%" fill="#f8fafc"/>
+<text class="title" x="60" y="48">Catalog Service - Database ER Diagram</text>
+<text class="subtitle" x="60" y="74">Source: GORM models and AutoMigrate in catalog/db.go</text>
+<path d="M 440,160.0 C 460.0,160.0 460.0,195.0 480,195.0" fill="none" stroke="#0ea5e9" stroke-width="3"  marker-end="url(#arrow)"/>
+<text class="legend" x="430" y="128" fill="#0ea5e9">1..N</text>
+<path d="M 860,195.0 C 890.0,195.0 890.0,185.0 920,185.0" fill="none" stroke="#22c55e" stroke-width="3"  marker-end="url(#arrow)"/>
+<text class="legend" x="860" y="150" fill="#22c55e">1..N</text>
+<path d="M 1710,655.0 C 1535.0,655.0 1535.0,185.0 1360,185.0" fill="none" stroke="#f97316" stroke-width="3"  marker-end="url(#arrow)"/>
+<text class="legend" x="1678" y="500" fill="#f97316">1..N</text>
+<path d="M 860,195.0 C 1110.0,195.0 1110.0,185.0 1360,185.0" fill="none" stroke="#a855f7" stroke-width="3" stroke-dasharray="9 7" marker-end="url(#arrow)"/>
+<text class="legend" x="1120" y="96" fill="#a855f7">1..N (snapshot link)</text>
+<path d="M 1230,665.0 C 1280.0,665.0 1280.0,655.0 1330,655.0" fill="none" stroke="#64748b" stroke-width="3" stroke-dasharray="9 7" marker-end="url(#arrow)"/>
+<text class="legend" x="1230" y="670" fill="#64748b">app-level mapping</text>
+<path d="M 210.0,76 C 80.0,-5 420.0,-5 290.0,76" fill="none" stroke="#0284c7" stroke-width="3"  marker-end="url(#arrow)"/>
+<text class="legend" x="175" y="30" fill="#0284c7">self 1..N</text>
+<rect x="60" y="70" width="380" height="180" rx="12" fill="#ffffff" stroke="#0f172a" stroke-width="2"/>
+<rect x="60" y="70" width="380" height="42" rx="12" fill="#0f172a"/>
+<text x="76" y="97" fill="#ffffff" font-family="Segoe UI, Arial" font-size="19" font-weight="700">categories</text>
+<text x="76" y="135" fill="#1e293b" font-family="Consolas, Menlo, monospace" font-size="14">id (PK)</text>
+<text x="76" y="165" fill="#1e293b" font-family="Consolas, Menlo, monospace" font-size="14">name</text>
+<text x="76" y="195" fill="#1e293b" font-family="Consolas, Menlo, monospace" font-size="14">parent_id (FK -> categories.id)</text>
+<text x="76" y="225" fill="#1e293b" font-family="Consolas, Menlo, monospace" font-size="14">created_at</text>
+<rect x="480" y="60" width="380" height="270" rx="12" fill="#ffffff" stroke="#0f172a" stroke-width="2"/>
+<rect x="480" y="60" width="380" height="42" rx="12" fill="#0f172a"/>
+<text x="496" y="87" fill="#ffffff" font-family="Segoe UI, Arial" font-size="19" font-weight="700">products</text>
+<text x="496" y="125" fill="#1e293b" font-family="Consolas, Menlo, monospace" font-size="14">id (PK)</text>
+<text x="496" y="155" fill="#1e293b" font-family="Consolas, Menlo, monospace" font-size="14">name, description</text>
+<text x="496" y="185" fill="#1e293b" font-family="Consolas, Menlo, monospace" font-size="14">price, stock</text>
+<text x="496" y="215" fill="#1e293b" font-family="Consolas, Menlo, monospace" font-size="14">category_id (FK -> categories.id)</text>
+<text x="496" y="245" fill="#1e293b" font-family="Consolas, Menlo, monospace" font-size="14">image_url</text>
+<text x="496" y="275" fill="#1e293b" font-family="Consolas, Menlo, monospace" font-size="14">color, condition, country, material</text>
+<text x="496" y="305" fill="#1e293b" font-family="Consolas, Menlo, monospace" font-size="14">created_at</text>
+<rect x="920" y="80" width="380" height="210" rx="12" fill="#ffffff" stroke="#0f172a" stroke-width="2"/>
+<rect x="920" y="80" width="380" height="42" rx="12" fill="#0f172a"/>
+<text x="936" y="107" fill="#ffffff" font-family="Segoe UI, Arial" font-size="19" font-weight="700">cart_items</text>
+<text x="936" y="145" fill="#1e293b" font-family="Consolas, Menlo, monospace" font-size="14">id (PK)</text>
+<text x="936" y="175" fill="#1e293b" font-family="Consolas, Menlo, monospace" font-size="14">cart_id (INDEX)</text>
+<text x="936" y="205" fill="#1e293b" font-family="Consolas, Menlo, monospace" font-size="14">product_id (FK -> products.id)</text>
+<text x="936" y="235" fill="#1e293b" font-family="Consolas, Menlo, monospace" font-size="14">quantity</text>
+<text x="936" y="265" fill="#1e293b" font-family="Consolas, Menlo, monospace" font-size="14">created_at</text>
+<rect x="1360" y="80" width="380" height="210" rx="12" fill="#ffffff" stroke="#0f172a" stroke-width="2"/>
+<rect x="1360" y="80" width="380" height="42" rx="12" fill="#0f172a"/>
+<text x="1376" y="107" fill="#ffffff" font-family="Segoe UI, Arial" font-size="19" font-weight="700">order_items</text>
+<text x="1376" y="145" fill="#1e293b" font-family="Consolas, Menlo, monospace" font-size="14">id (PK)</text>
+<text x="1376" y="175" fill="#1e293b" font-family="Consolas, Menlo, monospace" font-size="14">order_id (FK -> orders.id)</text>
+<text x="1376" y="205" fill="#1e293b" font-family="Consolas, Menlo, monospace" font-size="14">product_id (logical link -> products.id)</text>
+<text x="1376" y="235" fill="#1e293b" font-family="Consolas, Menlo, monospace" font-size="14">product_name (snapshot)</text>
+<text x="1376" y="265" fill="#1e293b" font-family="Consolas, Menlo, monospace" font-size="14">price, quantity</text>
+<rect x="1330" y="520" width="380" height="270" rx="12" fill="#ffffff" stroke="#0f172a" stroke-width="2"/>
+<rect x="1330" y="520" width="380" height="42" rx="12" fill="#0f172a"/>
+<text x="1346" y="547" fill="#ffffff" font-family="Segoe UI, Arial" font-size="19" font-weight="700">orders</text>
+<text x="1346" y="585" fill="#1e293b" font-family="Consolas, Menlo, monospace" font-size="14">id (PK)</text>
+<text x="1346" y="615" fill="#1e293b" font-family="Consolas, Menlo, monospace" font-size="14">customer_name, email, phone</text>
+<text x="1346" y="645" fill="#1e293b" font-family="Consolas, Menlo, monospace" font-size="14">address</text>
+<text x="1346" y="675" fill="#1e293b" font-family="Consolas, Menlo, monospace" font-size="14">delivery_type, pickup_point</text>
+<text x="1346" y="705" fill="#1e293b" font-family="Consolas, Menlo, monospace" font-size="14">delivery_lat, delivery_lng</text>
+<text x="1346" y="735" fill="#1e293b" font-family="Consolas, Menlo, monospace" font-size="14">delivery_price</text>
+<text x="1346" y="765" fill="#1e293b" font-family="Consolas, Menlo, monospace" font-size="14">status, total, created_at</text>
+<rect x="850" y="560" width="380" height="210" rx="12" fill="#ffffff" stroke="#0f172a" stroke-width="2"/>
+<rect x="850" y="560" width="380" height="42" rx="12" fill="#0f172a"/>
+<text x="866" y="587" fill="#ffffff" font-family="Segoe UI, Arial" font-size="19" font-weight="700">pickup_points</text>
+<text x="866" y="625" fill="#1e293b" font-family="Consolas, Menlo, monospace" font-size="14">id (PK)</text>
+<text x="866" y="655" fill="#1e293b" font-family="Consolas, Menlo, monospace" font-size="14">name, city, address</text>
+<text x="866" y="685" fill="#1e293b" font-family="Consolas, Menlo, monospace" font-size="14">latitude, longitude</text>
+<text x="866" y="715" fill="#1e293b" font-family="Consolas, Menlo, monospace" font-size="14">working_hours, phone, details</text>
+<text x="866" y="745" fill="#1e293b" font-family="Consolas, Menlo, monospace" font-size="14">created_at</text>
+<rect x="70" y="560" width="380" height="210" rx="12" fill="#ffffff" stroke="#0f172a" stroke-width="2"/>
+<rect x="70" y="560" width="380" height="42" rx="12" fill="#0f172a"/>
+<text x="86" y="587" fill="#ffffff" font-family="Segoe UI, Arial" font-size="19" font-weight="700">users</text>
+<text x="86" y="625" fill="#1e293b" font-family="Consolas, Menlo, monospace" font-size="14">id (PK)</text>
+<text x="86" y="655" fill="#1e293b" font-family="Consolas, Menlo, monospace" font-size="14">username (UNIQUE)</text>
+<text x="86" y="685" fill="#1e293b" font-family="Consolas, Menlo, monospace" font-size="14">role</text>
+<text x="86" y="715" fill="#1e293b" font-family="Consolas, Menlo, monospace" font-size="14">password_hash</text>
+<text x="86" y="745" fill="#1e293b" font-family="Consolas, Menlo, monospace" font-size="14">created_at</text>
+<rect x="60" y="930" width="820" height="170" rx="12" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+<text x="80" y="965" class="title" style="font-size:22px">Legend</text>
+<line x1="80" y1="994" x2="170" y2="994" stroke="#0ea5e9" stroke-width="3" marker-end="url(#arrow)"/>
+<text class="legend" x="182" y="999">Physical FK relation created by schema (or explicit model relation)</text>
+<line x1="80" y1="1028" x2="170" y2="1028" stroke="#64748b" stroke-width="3" stroke-dasharray="9 7" marker-end="url(#arrow)"/>
+<text class="legend" x="182" y="1033">Application-level relation without strict FK (stored as text/snapshot)</text>
+<text class="legend" x="80" y="1070">Note: orders.pickup_point stores a readable string; PickupPointID is validated in handlers, but not persisted as FK in orders table.</text>
+</svg>
