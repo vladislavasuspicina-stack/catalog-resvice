@@ -1,0 +1,31 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Run catalog.exe from hello-go",
+      "type": "shell",
+      "command": ".\\catalog.exe",
+      "options": {
+        "cwd": "${workspaceFolder}\\catalog-resvice\\catalog"
+      },
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": false
+      },
+      "problemMatcher": {
+        "owner": "custom",
+        "pattern": {
+          "regexp": "^(.*)$",
+          "message": 1
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".",
+          "endsPattern": "Server running on :8080"
+        }
+      }
+    }
+  ]
+}
