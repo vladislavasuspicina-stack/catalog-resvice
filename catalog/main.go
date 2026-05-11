@@ -19,6 +19,7 @@ func main() {
 	r.GET("/products", GetProducts)
 	r.GET("/products/:id", GetProduct)
 	r.GET("/categories", GetCategories)
+	r.GET("/brands", GetBrands)
 
 	// Cart & Order
 	r.POST("/cart/add", AddToCart)
@@ -26,6 +27,7 @@ func main() {
 	r.POST("/cart/remove", RemoveFromCart)
 	r.GET("/cart", GetCart)
 	r.POST("/order", CreateOrderHandler)
+	r.GET("/order/:id", GetOrderStatus)
 	r.GET("/pickup-points", GetPickupPoints)
 
 	// Customer auth
@@ -59,10 +61,10 @@ func main() {
 	}
 
 	// Web UI
-	t := template.Must(template.New("index").Parse(indexHTML))
+	t := template.Must(template.New("index").Parse(shopIndexHTML))
 	template.Must(t.New("admin").Parse(adminHTML))
-	template.Must(t.New("product").Parse(productHTML))
-	template.Must(t.New("cart").Parse(cartHTML))
+	template.Must(t.New("product").Parse(shopProductHTML))
+	template.Must(t.New("cart").Parse(shopCartHTML))
 	template.Must(t.New("auth").Parse(authHTML))
 	r.SetHTMLTemplate(t)
 
@@ -76,11 +78,6 @@ func main() {
 	})
 
 	renderShopPage := func(c *gin.Context) {
-		if _, err := currentUserFromCookie(c); err != nil {
-			redirectToAuth(c)
-			return
-		}
-
 		var categories []Category
 		var products []Product
 		DB.Find(&categories)
@@ -89,29 +86,20 @@ func main() {
 	}
 	r.GET("/", renderShopPage)
 	r.GET("/shop", renderShopPage)
+	r.GET("/favorites", renderShopPage)
+	r.GET("/orders", renderShopPage)
+	r.GET("/catalog", renderShopPage)
+	r.GET("/cart/view", renderShopPage)
 
 	r.GET("/product/:id", func(c *gin.Context) {
-		if _, err := currentUserFromCookie(c); err != nil {
-			redirectToAuth(c)
-			return
-		}
-
 		id := c.Param("id")
 		var p Product
 		if err := DB.First(&p, id).Error; err != nil {
 			c.String(http.StatusNotFound, "product not found")
 			return
 		}
+		enrichProductBrand(&p)
 		c.HTML(http.StatusOK, "product", gin.H{"product": p})
-	})
-
-	// Cart page (separate view)
-	r.GET("/cart/view", func(c *gin.Context) {
-		if _, err := currentUserFromCookie(c); err != nil {
-			redirectToAuth(c)
-			return
-		}
-		c.HTML(http.StatusOK, "cart", nil)
 	})
 
 	r.GET("/admin", func(c *gin.Context) {
@@ -139,7 +127,7 @@ func sanitizeNextPath(next string) string {
 	if next == "" || !strings.HasPrefix(next, "/") || strings.HasPrefix(next, "//") {
 		return "/"
 	}
-	if next == "/" || next == "/shop" || next == "/cart/view" || next == "/admin" || strings.HasPrefix(next, "/product/") {
+	if next == "/" || next == "/shop" || next == "/cart/view" || next == "/favorites" || next == "/orders" || next == "/catalog" || next == "/admin" || strings.HasPrefix(next, "/product/") {
 		return next
 	}
 	return "/"

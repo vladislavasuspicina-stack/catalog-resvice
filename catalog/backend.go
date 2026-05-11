@@ -9,9 +9,11 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/gin-gonic/gin"
 	jwt "github.com/golang-jwt/jwt/v5"
@@ -322,6 +324,143 @@ func DeleteCategory(c *gin.Context) {
 }
 
 // ==================== PRODUCT HANDLERS ====================
+func productSearchTerms(search string) []string {
+	search = strings.TrimSpace(search)
+	seen := map[string]bool{}
+	terms := []string{}
+	add := func(term string) {
+		term = strings.TrimSpace(term)
+		if term == "" || seen[term] {
+			return
+		}
+		seen[term] = true
+		terms = append(terms, term)
+		runes := []rune(term)
+		if len(runes) == 0 {
+			return
+		}
+		title := string(unicode.ToUpper(runes[0])) + string(runes[1:])
+		lower := string(unicode.ToLower(runes[0])) + string(runes[1:])
+		if title != term && !seen[title] {
+			seen[title] = true
+			terms = append(terms, title)
+		}
+		if lower != term && !seen[lower] {
+			seen[lower] = true
+			terms = append(terms, lower)
+		}
+	}
+	add(search)
+	low := strings.ToLower(search)
+	if strings.Contains(low, "смартфон") || strings.Contains(low, "телефон") {
+		add("телефон")
+		add("смартфон")
+		add("ксяоми")
+		add("xiaomi")
+		add("сасунг")
+		add("samsung")
+		add("айфон")
+		add("iphone")
+	}
+	if strings.Contains(low, "samsung") || strings.Contains(low, "самсунг") || strings.Contains(low, "сасунг") {
+		add("Samsung")
+		add("samsung")
+		add("самсунг")
+		add("сасунг")
+	}
+	if strings.Contains(low, "xiaomi") || strings.Contains(low, "ксяоми") || strings.Contains(low, "сяоми") {
+		add("Xiaomi")
+		add("xiaomi")
+		add("ксяоми")
+		add("сяоми")
+	}
+	if strings.Contains(low, "apple") || strings.Contains(low, "iphone") || strings.Contains(low, "айфон") {
+		add("Apple")
+		add("apple")
+		add("iPhone")
+		add("айфон")
+	}
+	if strings.Contains(low, "huawei") || strings.Contains(low, "хуавей") {
+		add("Huawei")
+		add("huawei")
+		add("хуавей")
+	}
+	if strings.Contains(low, "honor") || strings.Contains(low, "хонор") {
+		add("Honor")
+		add("honor")
+		add("хонор")
+	}
+	if strings.Contains(low, "часы") {
+		add("часы")
+		add("смарт часы")
+		add("SmartWatch")
+		add("watch")
+	}
+	if strings.Contains(low, "ноутбук") {
+		add("ноутбук")
+		add("laptop")
+	}
+	return terms
+}
+
+func applyProductSearch(query *gorm.DB, search string, fields []string) *gorm.DB {
+	variants := productSearchTerms(search)
+	clauses := make([]string, 0, len(variants))
+	args := make([]interface{}, 0, len(variants)*len(fields))
+	for _, variant := range variants {
+		like := "%" + variant + "%"
+		fieldClauses := make([]string, 0, len(fields))
+		for _, field := range fields {
+			fieldClauses = append(fieldClauses, field+" LIKE ?")
+			args = append(args, like)
+		}
+		clauses = append(clauses, "("+strings.Join(fieldClauses, " OR ")+")")
+	}
+	if len(clauses) == 0 {
+		return query
+	}
+	return query.Where(strings.Join(clauses, " OR "), args...)
+}
+
+func inferProductBrand(p Product) string {
+	if strings.TrimSpace(p.Brand) != "" {
+		return strings.TrimSpace(p.Brand)
+	}
+	text := strings.ToLower(strings.Join([]string{p.Name, p.Description, p.Material, p.Country}, " "))
+	switch {
+	case strings.Contains(text, "xiaomi") || strings.Contains(text, "ксяоми") || strings.Contains(text, "сяоми"):
+		return "Xiaomi"
+	case strings.Contains(text, "samsung") || strings.Contains(text, "самсунг") || strings.Contains(text, "сасунг"):
+		return "Samsung"
+	case strings.Contains(text, "iphone") || strings.Contains(text, "apple") || strings.Contains(text, "айфон"):
+		return "Apple"
+	case strings.Contains(text, "huawei") || strings.Contains(text, "хуавей"):
+		return "Huawei"
+	case strings.Contains(text, "honor") || strings.Contains(text, "хонор"):
+		return "Honor"
+	case strings.Contains(text, "smartwatch") || strings.Contains(text, "smart watch"):
+		return "SmartWatch"
+	case strings.Contains(text, "asus"):
+		return "ASUS"
+	case strings.Contains(text, "lenovo"):
+		return "Lenovo"
+	case strings.Contains(text, "acer"):
+		return "Acer"
+	case strings.Contains(text, "dell"):
+		return "Dell"
+	case strings.Contains(text, "hp"):
+		return "HP"
+	default:
+		return ""
+	}
+}
+
+func enrichProductBrand(p *Product) {
+	if strings.TrimSpace(p.Brand) == "" {
+		p.Brand = inferProductBrand(*p)
+	}
+}
+
 func CreateProduct(c *gin.Context) {
 	var input Product
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -339,6 +478,11 @@ func CreateProduct(c *gin.Context) {
 		Stock:       input.Stock,
 		CategoryID:  input.CategoryID,
 		ImageURL:    input.ImageURL,
+		Brand:       strings.TrimSpace(input.Brand),
+		Color:       input.Color,
+		Condition:   input.Condition,
+		Country:     input.Country,
+		Material:    input.Material,
 	}
 	DB.Create(&p)
 	c.JSON(http.StatusCreated, p)
@@ -363,11 +507,15 @@ func GetProducts(c *gin.Context) {
 	minPrice := c.Query("min_price")
 	maxPrice := c.Query("max_price")
 	categoryID := c.Query("category")
+	brand := c.Query("brand")
 
 	query := DB.Model(&Product{})
 
 	if search != "" {
-		query = query.Where("name LIKE ?", "%"+search+"%")
+		query = applyProductSearch(query, search, []string{"name", "description", "brand", "color", "condition", "country", "material"})
+	}
+	if brand != "" {
+		query = applyProductSearch(query, brand, []string{"brand", "name", "description"})
 	}
 	if minPrice != "" {
 		if v, err := strconv.ParseFloat(minPrice, 64); err == nil {
@@ -405,6 +553,9 @@ func GetProducts(c *gin.Context) {
 
 	var products []Product
 	query.Offset(offset).Limit(perPage).Find(&products)
+	for i := range products {
+		enrichProductBrand(&products[i])
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"items":      products,
@@ -422,7 +573,25 @@ func GetProduct(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
 		return
 	}
+	enrichProductBrand(&p)
 	c.JSON(http.StatusOK, p)
+}
+
+func GetBrands(c *gin.Context) {
+	var products []Product
+	DB.Select([]string{"brand", "name", "description", "material", "country"}).Find(&products)
+	seen := map[string]bool{}
+	brands := []string{}
+	for _, product := range products {
+		brand := inferProductBrand(product)
+		if brand == "" || seen[brand] {
+			continue
+		}
+		seen[brand] = true
+		brands = append(brands, brand)
+	}
+	sort.Strings(brands)
+	c.JSON(http.StatusOK, gin.H{"items": brands})
 }
 
 func UpdateProduct(c *gin.Context) {
@@ -476,6 +645,9 @@ func UpdateProduct(c *gin.Context) {
 		} else if s, ok := v.(string); ok {
 			prod.ImageURL = &s
 		}
+	}
+	if v, ok := input["brand"].(string); ok {
+		prod.Brand = strings.TrimSpace(v)
 	}
 	if v, ok := input["color"].(string); ok {
 		prod.Color = v
@@ -803,7 +975,26 @@ func CreateOrderHandler(c *gin.Context) {
 	})
 }
 
+func GetOrderStatus(c *gin.Context) {
+	id := c.Param("id")
+	var order Order
+	if err := DB.Preload("Items").First(&order, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "order not found"})
+		return
+	}
+	c.JSON(http.StatusOK, order)
+}
+
 // ==================== ADMIN ORDERS ====================
+func validOrderStatus(status string) bool {
+	switch status {
+	case "pending", "processing", "shipped", "delivered", "cancelled":
+		return true
+	default:
+		return false
+	}
+}
+
 func AdminListOrders(c *gin.Context) {
 	pageStr := c.DefaultQuery("page", "1")
 	perPageStr := c.DefaultQuery("per_page", "20")
@@ -821,7 +1012,7 @@ func AdminListOrders(c *gin.Context) {
 	DB.Model(&Order{}).Count(&total)
 
 	var orders []Order
-	DB.Order("created_at desc").Offset(offset).Limit(perPage).Find(&orders)
+	DB.Preload("Items").Order("created_at desc").Offset(offset).Limit(perPage).Find(&orders)
 	c.JSON(http.StatusOK, gin.H{
 		"items":      orders,
 		"page":       page,
@@ -850,13 +1041,22 @@ func AdminUpdateOrderStatus(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	status := strings.TrimSpace(input.Status)
+	if !validOrderStatus(status) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid status"})
+		return
+	}
 	var order Order
 	if err := DB.First(&order, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "order not found"})
 		return
 	}
-	order.Status = input.Status
-	DB.Save(&order)
+	order.Status = status
+	if err := DB.Save(&order).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot update order"})
+		return
+	}
+	DB.Preload("Items").First(&order, id)
 	c.JSON(http.StatusOK, order)
 }
 
@@ -1046,5 +1246,11 @@ func GetPickupPoints(c *gin.Context) {
 		query = query.Where("city IN ?", []string{"Moscow", "Moscow Oblast", "Москва", "Московская область"})
 	}
 	query.Find(&points)
-	c.JSON(http.StatusOK, points)
+	if len(points) == 0 {
+		for _, point := range defaultPickupPoints() {
+			DB.FirstOrCreate(&point, PickupPoint{Name: point.Name})
+		}
+		query.Find(&points)
+	}
+	c.JSON(http.StatusOK, gin.H{"points": points})
 }
