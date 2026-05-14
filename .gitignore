@@ -1,13 +1,9 @@
 *.exe
 *.exe~
 *.log
-*.db
 
 catalog/.gocache/
 catalog/server.out.log
 catalog/server.err.log
 catalog/orders/*.json
 catalog/orders/*.xlsx
-
-catalog/static/uploads/
-static/uploads/

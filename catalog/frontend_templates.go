@@ -44,6 +44,7 @@ body{
   background:linear-gradient(120deg, rgba(255,255,255,0.92), rgba(255,255,255,0.72));
   box-shadow:var(--shadow);
   backdrop-filter:blur(6px);
+  animation:rise .32s ease both;
 }
 .title-wrap h1{
   margin:0;
@@ -84,10 +85,71 @@ input,select,textarea{
   transition:border-color .18s ease, box-shadow .18s ease;
 }
 textarea{min-height:96px;resize:vertical}
+.category-native{display:none}
 input:focus,select:focus,textarea:focus{
   border-color:#7bb8f4;
   box-shadow:0 0 0 4px rgba(97,174,255,0.2);
 }
+.category-picker{position:relative}
+.category-picker-toggle{
+  width:100%;
+  min-height:42px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:#fff;
+  color:#0f2132;
+  padding:10px 40px 10px 12px;
+  text-align:left;
+  font:500 14px/1.35 'Manrope','Segoe UI',sans-serif;
+  cursor:pointer;
+  transition:border-color .18s ease,box-shadow .18s ease;
+}
+.category-picker-toggle:after{
+  content:"";
+  position:absolute;
+  right:14px;
+  top:17px;
+  width:8px;
+  height:8px;
+  border-right:2px solid #486076;
+  border-bottom:2px solid #486076;
+  transform:rotate(45deg);
+}
+.category-picker.open .category-picker-toggle{border-color:#7bb8f4;box-shadow:0 0 0 4px rgba(97,174,255,0.2)}
+.category-picker.open .category-picker-toggle:after{top:21px;transform:rotate(225deg)}
+.category-picker-panel{
+  position:absolute;
+  left:0;
+  right:0;
+  top:calc(100% + 6px);
+  z-index:50;
+  display:none;
+  max-height:230px;
+  overflow:auto;
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:#fff;
+  box-shadow:0 18px 36px rgba(16,52,82,.16);
+  padding:8px;
+}
+.category-picker.open .category-picker-panel{display:grid;gap:4px}
+.category-option{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  min-height:36px;
+  padding:8px 9px;
+  border-radius:10px;
+  color:#21384e;
+  cursor:pointer;
+  font-size:14px;
+}
+.category-option:hover{background:#f3f8fc}
+.category-option input{width:16px;height:16px;margin:0;accent-color:var(--brand)}
+.category-option span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.category-option[data-level="1"]{padding-left:24px}
+.category-option[data-level="2"]{padding-left:40px}
+.category-empty{padding:10px;color:var(--muted);font-size:13px}
 .btn{
   border:none;
   border-radius:12px;
@@ -162,16 +224,111 @@ input:focus,select:focus,textarea:focus{
   gap:12px;
   grid-template-columns:repeat(auto-fill,minmax(240px,1fr));
 }
+.category-list{
+  display:grid;
+  gap:10px;
+}
+.category-card{
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:#fff;
+  padding:12px;
+  display:grid;
+  grid-template-columns:minmax(180px,1fr) auto;
+  gap:10px;
+  align-items:center;
+  animation:rise .22s ease both;
+  transition:transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+}
+.category-card:hover{transform:translateY(-2px);border-color:#c6d9ea;box-shadow:0 10px 20px rgba(16,52,82,.08)}
+.category-card.child{
+  margin-left:24px;
+  background:#f8fbff;
+}
+.category-name{
+  font-weight:900;
+}
+.category-meta{
+  color:var(--muted);
+  font-size:13px;
+  margin-top:3px;
+}
 .order-list{
   display:grid;
   gap:12px;
+}
+.user-list{
+  display:grid;
+  gap:12px;
+}
+.user-card{
+  border:1px solid var(--line);
+  border-radius:16px;
+  background:#fff;
+  padding:14px;
+  display:grid;
+  grid-template-columns:minmax(220px,1fr) 160px auto;
+  gap:10px;
+  align-items:end;
+  animation:rise .22s ease both;
+  transition:transform .16s ease, box-shadow .16s ease, border-color .16s ease;
+}
+.user-card:hover{transform:translateY(-2px);border-color:#c6d9ea;box-shadow:0 10px 22px rgba(16,52,82,.08)}
+.user-title{
+  font-weight:900;
+  margin-bottom:6px;
+}
+.user-meta{
+  color:var(--muted);
+  font-size:13px;
+}
+.user-hash{
+  margin-top:8px;
+  max-width:100%;
+  color:#5b6f84;
+  font-family:Consolas,Menlo,monospace;
+  font-size:12px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.secret-toggle{
+  border:1px solid var(--line);
+  border-radius:10px;
+  background:#f4f8fc;
+  color:#486076;
+  min-height:40px;
+  padding:0 10px;
+  font-weight:800;
+  transition:transform .16s ease, background .16s ease;
+}
+.secret-toggle:hover{transform:translateY(-1px);background:#eaf2fb}
+.role-display{
+  min-height:40px;
+  display:flex;
+  align-items:center;
+  padding:0 12px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:#f8fbff;
+  color:#486076;
+  font-weight:800;
+}
+.user-actions{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  align-items:center;
 }
 .order-card{
   border:1px solid var(--line);
   border-radius:16px;
   background:#fff;
   padding:14px;
+  animation:rise .22s ease both;
+  transition:transform .16s ease, box-shadow .16s ease, border-color .16s ease;
 }
+.order-card:hover{transform:translateY(-2px);border-color:#c6d9ea;box-shadow:0 10px 22px rgba(16,52,82,.08)}
 .order-head{
   display:flex;
   justify-content:space-between;
@@ -269,6 +426,7 @@ input:focus,select:focus,textarea:focus{
   padding:14px;
   z-index:2000;
 }
+.modal-backdrop[style*="flex"]{animation:rise .16s ease both}
 .modal-card{
   width:860px;
   max-width:100%;
@@ -279,6 +437,7 @@ input:focus,select:focus,textarea:focus{
   border:1px solid var(--line);
   box-shadow:0 25px 55px rgba(7,19,35,0.28);
   padding:16px;
+  animation:modalPop .2s ease both;
 }
 .modal-head{
   display:flex;
@@ -296,7 +455,9 @@ input:focus,select:focus,textarea:focus{
   color:#2e4a63;
   font-size:18px;
   cursor:pointer;
+  transition:transform .16s ease, background .16s ease;
 }
+.close-btn:hover{transform:rotate(4deg);background:#e2edf8}
 .modal-grid{
   display:grid;
   gap:12px;
@@ -312,6 +473,13 @@ input:focus,select:focus,textarea:focus{
   from{opacity:0;transform:translateY(8px)}
   to{opacity:1;transform:translateY(0)}
 }
+@keyframes modalPop{
+  from{opacity:0;transform:translateY(10px) scale(.98)}
+  to{opacity:1;transform:translateY(0) scale(1)}
+}
+@media(prefers-reduced-motion:reduce){
+  *,*:before,*:after{animation:none!important;transition:none!important}
+}
 @media (max-width:980px){
   .layout{grid-template-columns:1fr}
   .panel-list{grid-column:1}
@@ -321,6 +489,9 @@ input:focus,select:focus,textarea:focus{
   .row.two{grid-template-columns:1fr}
   .modal-grid{grid-template-columns:1fr}
   .topbar{padding:14px}
+  .category-card{grid-template-columns:1fr}
+  .category-card.child{margin-left:12px}
+  .user-card{grid-template-columns:1fr}
 }
 </style>
 </head>
@@ -337,7 +508,7 @@ input:focus,select:focus,textarea:focus{
   <main class="layout">
     <section class="panel">
       <h2>Создать категорию</h2>
-      <div class="inline">
+      <div class="row">
         <input id="catName" placeholder="Название категории" autocomplete="off">
         <button id="btnCreateCat" class="btn btn-primary" type="button">Добавить</button>
       </div>
@@ -351,8 +522,9 @@ input:focus,select:focus,textarea:focus{
           <input id="pName" placeholder="Название товара" autocomplete="off">
         </div>
         <div>
-          <label for="pCategory">Категория</label>
-          <select id="pCategory"><option value="">Выберите категорию</option></select>
+          <label for="pCategory">Категории</label>
+          <select id="pCategory" class="category-native" multiple><option value="">Выберите категории</option></select>
+          <div class="category-picker" data-category-picker="pCategory"></div>
         </div>
         <div>
           <label for="pBrand">Бренд</label>
@@ -414,10 +586,26 @@ input:focus,select:focus,textarea:focus{
 
     <section class="panel panel-list">
       <div class="panel-head">
+        <h2>Каталоги и подкаталоги</h2>
+        <button id="btnReloadCategories" class="btn btn-light" type="button">Обновить</button>
+      </div>
+      <div id="catList" class="category-list"></div>
+    </section>
+
+    <section class="panel panel-list">
+      <div class="panel-head">
         <h2>Заказы</h2>
         <button id="btnReloadOrders" class="btn btn-light" type="button">Обновить</button>
       </div>
       <div id="ordersList" class="order-list"></div>
+    </section>
+
+    <section class="panel panel-list">
+      <div class="panel-head">
+        <h2>Пользователи</h2>
+        <button id="btnReloadUsers" class="btn btn-light" type="button">Обновить</button>
+      </div>
+      <div id="usersList" class="user-list"></div>
     </section>
   </main>
 </div>
@@ -436,8 +624,9 @@ input:focus,select:focus,textarea:focus{
           <input id="eName" placeholder="Название товара">
         </div>
         <div>
-          <label for="eCategory">Категория</label>
-          <select id="eCategory"><option value="">Выберите категорию</option></select>
+          <label for="eCategory">Категории</label>
+          <select id="eCategory" class="category-native" multiple><option value="">Выберите категории</option></select>
+          <div class="category-picker" data-category-picker="eCategory"></div>
         </div>
         <div>
           <label for="eBrand">Бренд</label>
@@ -531,11 +720,114 @@ function formatDate(v){
 }
 function categoryOptionsHtml(cats){
   var html = '<option value="">Выберите категорию</option>';
-  for(var i=0;i<cats.length;i++){
-    var c = cats[i];
-    html += '<option value="' + c.id + '">' + esc(c.name) + '</option>';
+  var rows = buildCategoryRows(cats);
+  for(var i=0;i<rows.length;i++){
+    var row = rows[i];
+    html += '<option value="' + row.category.id + '">' + esc(Array(row.level + 1).join('- ') + row.category.name) + '</option>';
   }
   return html;
+}
+function selectedCategoryIDs(id){
+  var select = document.getElementById(id);
+  if(!select) return [];
+  var ids = [];
+  for(var i=0;i<select.options.length;i++){
+    var option = select.options[i];
+    if(option.selected && option.value){
+      ids.push(parseInt(option.value, 10));
+    }
+  }
+  return ids.filter(function(id){ return Number.isFinite(id) && id > 0; });
+}
+function setSelectedCategoryIDs(id, ids){
+  var select = document.getElementById(id);
+  if(!select) return;
+  var set = {};
+  (ids || []).forEach(function(value){ set[String(value)] = true; });
+  for(var i=0;i<select.options.length;i++){
+    select.options[i].selected = !!set[String(select.options[i].value)];
+  }
+  updateCategoryPicker(id);
+}
+function categoryLabelById(id){
+  var select = document.getElementById(id);
+  if(!select) return '';
+  var names = [];
+  for(var i=0;i<select.options.length;i++){
+    var option = select.options[i];
+    if(option.selected && option.value){
+      names.push(option.textContent.replace(/^-+\s*/, ''));
+    }
+  }
+  return names.length ? names.join(', ') : 'Выберите категории';
+}
+function updateCategoryPicker(id){
+  var picker = document.querySelector('[data-category-picker="' + id + '"]');
+  if(!picker) return;
+  var text = picker.querySelector('[data-category-picker-text]');
+  if(text) text.textContent = categoryLabelById(id);
+  var ids = selectedCategoryIDs(id).map(String);
+  picker.querySelectorAll('input[type="checkbox"]').forEach(function(input){
+    input.checked = ids.indexOf(input.value) !== -1;
+  });
+}
+function renderCategoryPicker(id, cats){
+  var picker = document.querySelector('[data-category-picker="' + id + '"]');
+  if(!picker) return;
+  var rows = buildCategoryRows(cats);
+  var body = rows.length ? rows.map(function(row){
+    var name = esc(Array(row.level + 1).join('- ') + row.category.name);
+    return '<label class="category-option" data-level="' + row.level + '">'
+      + '<input type="checkbox" value="' + row.category.id + '">'
+      + '<span>' + name + '</span>'
+      + '</label>';
+  }).join('') : '<div class="category-empty">Категорий пока нет</div>';
+  picker.innerHTML = ''
+    + '<button class="category-picker-toggle" type="button"><span data-category-picker-text>Выберите категории</span></button>'
+    + '<div class="category-picker-panel">' + body + '</div>';
+  updateCategoryPicker(id);
+}
+function buildCategoryRows(cats){
+  var byParent = {};
+  for(var i=0;i<cats.length;i++){
+    var c = cats[i];
+    var key = c.parent_id || 0;
+    if(!byParent[key]) byParent[key] = [];
+    byParent[key].push(c);
+  }
+  Object.keys(byParent).forEach(function(key){
+    byParent[key].sort(function(a,b){ return String(a.name || '').localeCompare(String(b.name || ''), 'ru'); });
+  });
+  var rows = [];
+  function walk(parentId, level){
+    var list = byParent[parentId] || [];
+    for(var j=0;j<list.length;j++){
+      rows.push({category:list[j], level:level});
+      walk(list[j].id, level + 1);
+    }
+  }
+  walk(0, 0);
+  return rows;
+}
+function renderCategoryList(cats){
+  var list = document.getElementById('catList');
+  if(!list) return;
+  var rows = buildCategoryRows(cats);
+  if(!rows.length){
+    list.innerHTML = '<div class="empty-state">Каталогов пока нет. Создайте первый каталог выше.</div>';
+    return;
+  }
+  list.innerHTML = rows.map(function(row){
+    var c = row.category;
+    var isChild = row.level > 0;
+    var meta = isChild ? 'Подкаталог' : 'Основной каталог';
+    return ''
+      + '<article class="category-card' + (isChild ? ' child' : '') + '">'
+      + '<div><div class="category-name">' + esc(c.name || '') + '</div>'
+      + '<div class="category-meta">' + meta + ' | ID: ' + c.id + '</div></div>'
+      + '<button class="btn btn-danger" type="button" data-delete-category="' + c.id + '">Удалить</button>'
+      + '</article>';
+  }).join('');
 }
 async function loadCategories(){
   var cats = await api('/categories', 'GET');
@@ -545,6 +837,9 @@ async function loadCategories(){
   var eSel = document.getElementById('eCategory');
   pSel.innerHTML = html;
   eSel.innerHTML = html;
+  renderCategoryPicker('pCategory', cats);
+  renderCategoryPicker('eCategory', cats);
+  renderCategoryList(cats);
   return cats;
 }
 function renderProductCard(p){
@@ -553,7 +848,8 @@ function renderProductCard(p){
     ? '<div class="card-image"><img src="' + esc(p.image_url) + '" alt=""></div>'
     : '<div class="card-image">Нет изображения</div>';
   var desc = p.description ? esc(p.description) : 'Нет описания';
-  var meta = 'Бренд: ' + (p.brand || 'не указан') + ' | Цена: ' + (p.price || 0) + ' | Остаток: ' + (p.stock || 0);
+  var cats = Array.isArray(p.categories) && p.categories.length ? p.categories.map(function(c){ return c.name; }).join(', ') : 'не указаны';
+  var meta = 'Бренд: ' + (p.brand || 'не указан') + ' | Категории: ' + cats + ' | Цена: ' + (p.price || 0) + ' | Остаток: ' + (p.stock || 0);
   return ''
     + '<article class="product-card" onclick="editProduct(' + p.id + ')">'
     + image
@@ -672,6 +968,7 @@ function renderOrderCard(o){
     + '<div class="order-status-row">'
     + '<select data-order-status="' + o.id + '">' + orderStatusOptions(o.status) + '</select>'
     + '<button class="btn btn-primary" type="button" data-save-order-status="' + o.id + '">Сохранить статус</button>'
+    + '<button class="btn btn-danger" type="button" data-delete-order="' + o.id + '">Удалить</button>'
     + '</div>'
     + '</article>';
 }
@@ -685,11 +982,61 @@ async function loadOrders(){
   }
   list.innerHTML = items.map(renderOrderCard).join('');
 }
+function renderUserCard(u){
+  var role = u.role === 'admin' ? 'admin' : 'user';
+  var isBuiltInAdmin = u.username === 'admin';
+  var hash = u.password_hash || '';
+  return ''
+    + '<article class="user-card" data-user-id="' + u.id + '">'
+    + '<div>'
+    + '<div class="user-title">' + esc(u.username || '') + '</div>'
+    + '<div class="user-meta">ID: ' + u.id + ' | роль: ' + role + '</div>'
+    + '<div class="user-hash" title="' + esc(hash) + '" data-user-hash-text="' + esc(hash || 'нет') + '">Пароль: ' + maskedSecret(hash) + '</div>'
+    + '<button class="secret-toggle" type="button" data-toggle-user-hash="' + u.id + '">Показать</button>'
+    + '</div>'
+    + '<div><label>Роль</label><div class="role-display">' + role + '</div></div>'
+    + '<div class="user-actions">'
+    + '<button class="btn btn-danger" type="button" data-delete-user="' + u.id + '" ' + (isBuiltInAdmin ? 'disabled' : '') + '>Удалить</button>'
+    + '</div>'
+    + '</article>';
+}
+function maskedSecret(value){
+  if(!value) return 'нет';
+  return '••••••••••••';
+}
+async function loadUsers(){
+  var data = await api('/admin/api/users?page=1&per_page=100', 'GET');
+  var items = data && Array.isArray(data.items) ? data.items : [];
+  var list = document.getElementById('usersList');
+  if(!items.length){
+    list.innerHTML = '<div class="empty-state">Пользователей пока нет.</div>';
+    return;
+  }
+  list.innerHTML = items.map(renderUserCard).join('');
+}
 async function saveOrderStatus(id){
   var select = document.querySelector('[data-order-status="' + id + '"]');
   if(!select) return;
   await api('/admin/api/orders/' + id + '/status', 'PUT', {status: select.value});
   await loadOrders();
+}
+async function deleteOrder(id){
+  if(!confirm('Удалить заказ #' + id + '?')) return;
+  await api('/admin/api/orders/' + id, 'DELETE');
+  await loadOrders();
+}
+async function deleteUser(id){
+  var card = document.querySelector('[data-user-id="' + id + '"]');
+  var name = card ? card.querySelector('.user-title').textContent : id;
+  if(!confirm('Удалить пользователя ' + name + '?')) return;
+  await api('/admin/api/users/' + id, 'DELETE');
+  await loadUsers();
+}
+async function deleteCategory(id){
+  if(!confirm('Удалить каталог? Подкаталоги тоже будут удалены, товары останутся без категории.')) return;
+  await api('/admin/api/categories/' + id, 'DELETE');
+  await loadCategories();
+  await loadProducts();
 }
 async function uploadFile(file){
   file = await normalizeProductImage(file);
@@ -742,12 +1089,13 @@ document.getElementById('btnCreateProd').addEventListener('click', async functio
     var file = pImageInput && pImageInput.files ? pImageInput.files[0] : null;
     var image_url = null;
     if(file) image_url = await uploadFile(file);
-    var cat = document.getElementById('pCategory').value;
+    var categoryIds = selectedCategoryIDs('pCategory');
     await api('/admin/api/products', 'POST', {
       name: document.getElementById('pName').value,
       price: toNumber(document.getElementById('pPrice').value),
       stock: toInt(document.getElementById('pStock').value),
-      category_id: cat ? parseInt(cat, 10) : null,
+      category_id: categoryIds.length ? categoryIds[0] : null,
+      category_ids: categoryIds,
       brand: document.getElementById('pBrand').value || '',
       description: document.getElementById('pDesc').value,
       image_url: image_url,
@@ -765,7 +1113,7 @@ document.getElementById('btnCreateProd').addEventListener('click', async functio
     document.getElementById('pCondition').value = '';
     document.getElementById('pCountry').value = '';
     document.getElementById('pMaterial').value = '';
-    document.getElementById('pCategory').value = '';
+    setSelectedCategoryIDs('pCategory', []);
     if(pImageInput) pImageInput.value = '';
     resetCreateImagePreview();
     await loadProducts();
@@ -826,7 +1174,7 @@ async function editProduct(id){
     document.getElementById('eName').value = prod.name || '';
     document.getElementById('ePrice').value = prod.price || '';
     document.getElementById('eStock').value = prod.stock || '';
-    document.getElementById('eCategory').value = prod.category_id || '';
+    setSelectedCategoryIDs('eCategory', prod.category_ids && prod.category_ids.length ? prod.category_ids : (prod.category_id ? [prod.category_id] : []));
     document.getElementById('eBrand').value = prod.brand || '';
     document.getElementById('eColor').value = prod.color || '';
     document.getElementById('eCondition').value = prod.condition || '';
@@ -860,12 +1208,13 @@ document.getElementById('saveEdit').addEventListener('click', async function(){
   try{
     var id = document.getElementById('editModal').dataset.editing;
     if(!id) return alert('Товар не выбран.');
-    var cat = document.getElementById('eCategory').value;
+    var categoryIds = selectedCategoryIDs('eCategory');
     var payload = {
       name: document.getElementById('eName').value,
       price: toNumber(document.getElementById('ePrice').value),
       stock: toInt(document.getElementById('eStock').value),
-      category_id: cat ? parseInt(cat, 10) : null,
+      category_id: categoryIds.length ? categoryIds[0] : null,
+      category_ids: categoryIds,
       brand: document.getElementById('eBrand').value || '',
       color: document.getElementById('eColor').value || '',
       condition: document.getElementById('eCondition').value || '',
@@ -903,22 +1252,107 @@ document.getElementById('btnReloadOrders').addEventListener('click', async funct
     alert('Не удалось загрузить заказы: ' + e.message);
   }
 });
+document.getElementById('btnReloadCategories').addEventListener('click', async function(){
+  try{
+    await loadCategories();
+  }catch(e){
+    alert('Не удалось загрузить каталоги: ' + e.message);
+  }
+});
+document.getElementById('btnReloadUsers').addEventListener('click', async function(){
+  try{
+    await loadUsers();
+  }catch(e){
+    alert('Не удалось загрузить пользователей: ' + e.message);
+  }
+});
 document.getElementById('ordersList').addEventListener('click', async function(e){
-  var btn = e.target.closest('[data-save-order-status]');
+  var btn = e.target.closest('[data-save-order-status], [data-delete-order]');
   if(!btn) return;
   try{
     btn.disabled = true;
-    await saveOrderStatus(btn.dataset.saveOrderStatus);
+    if(btn.dataset.saveOrderStatus){
+      await saveOrderStatus(btn.dataset.saveOrderStatus);
+    }else{
+      await deleteOrder(btn.dataset.deleteOrder);
+    }
   }catch(err){
-    alert('Не удалось изменить статус: ' + err.message);
+    alert('Не удалось выполнить действие с заказом: ' + err.message);
   }finally{
     btn.disabled = false;
+  }
+});
+document.getElementById('catList').addEventListener('click', async function(e){
+  var btn = e.target.closest('[data-delete-category]');
+  if(!btn) return;
+  try{
+    btn.disabled = true;
+    await deleteCategory(btn.dataset.deleteCategory);
+  }catch(err){
+    alert('Не удалось удалить каталог: ' + err.message);
+  }finally{
+    btn.disabled = false;
+  }
+});
+document.getElementById('usersList').addEventListener('click', async function(e){
+  var hashToggle = e.target.closest('[data-toggle-user-hash]');
+  if(hashToggle){
+    var hashCard = hashToggle.closest('[data-user-id]');
+    var hashEl = hashCard ? hashCard.querySelector('[data-user-hash-text]') : null;
+    if(!hashEl) return;
+    var showHash = hashToggle.dataset.visible !== '1';
+    hashToggle.dataset.visible = showHash ? '1' : '0';
+    hashEl.textContent = 'Пароль: ' + (showHash ? hashEl.dataset.userHashText : maskedSecret(hashEl.dataset.userHashText));
+    hashToggle.textContent = showHash ? 'Скрыть' : 'Показать';
+    return;
+  }
+  var btn = e.target.closest('[data-delete-user]');
+  if(!btn) return;
+  try{
+    btn.disabled = true;
+    await deleteUser(btn.dataset.deleteUser);
+  }catch(err){
+    alert('Не удалось выполнить действие с пользователем: ' + err.message);
+  }finally{
+    btn.disabled = false;
+  }
+});
+document.addEventListener('click', function(e){
+  var toggle = e.target.closest('.category-picker-toggle');
+  var picker = e.target.closest('.category-picker');
+  document.querySelectorAll('.category-picker.open').forEach(function(openPicker){
+    if(openPicker !== picker) openPicker.classList.remove('open');
+  });
+  if(toggle && picker){
+    picker.classList.toggle('open');
+    return;
+  }
+  var option = e.target.closest('.category-option input');
+  if(option && picker){
+    var id = picker.dataset.categoryPicker;
+    var select = document.getElementById(id);
+    if(select){
+      for(var i=0;i<select.options.length;i++){
+        if(select.options[i].value === option.value){
+          select.options[i].selected = option.checked;
+          break;
+        }
+      }
+      updateCategoryPicker(id);
+    }
+    return;
+  }
+  if(!picker){
+    document.querySelectorAll('.category-picker.open').forEach(function(openPicker){
+      openPicker.classList.remove('open');
+    });
   }
 });
 async function initAdmin(){
   await loadCategories();
   await loadProducts();
   await loadOrders();
+  await loadUsers();
 }
 initAdmin();
 </script>

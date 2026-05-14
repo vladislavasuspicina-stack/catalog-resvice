@@ -26,19 +26,27 @@ body{margin:0;background:var(--soft);color:var(--ink);font-family:Inter,Segoe UI
 button,input,select,textarea{font:inherit}
 button{cursor:pointer}
 a{color:inherit}
+@keyframes softRise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes accountMenuIn{from{opacity:0;transform:translate(-50%,-6px)}to{opacity:1;transform:translate(-50%,0)}}
+@keyframes popIn{from{opacity:0;transform:translate(-50%,-48%) scale(.98)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
+@keyframes toastIn{from{opacity:0;transform:translate(-50%,10px)}to{opacity:1;transform:translate(-50%,0)}}
 .page-bg{min-height:100vh}
 .market-header{position:sticky;top:0;z-index:70;background:rgba(241,244,249,.96);backdrop-filter:saturate(140%) blur(10px)}
 .header-card{max-width:1410px;margin:0 auto;background:#fff;border-radius:0 0 28px 28px;padding:10px 22px 14px;box-shadow:0 8px 24px rgba(0,26,52,.05)}
 .header-main{display:grid;grid-template-columns:auto auto minmax(280px,1fr) auto;gap:14px;align-items:center}
-.logo{font-size:42px;line-height:1;font-weight:900;letter-spacing:1px;text-decoration:none;color:var(--blue)}
-.catalog-button{height:46px;border:0;border-radius:11px;background:var(--blue);color:#fff;padding:0 18px;display:flex;align-items:center;gap:10px;font-weight:800}
+.logo{font-size:42px;line-height:1;font-weight:900;letter-spacing:1px;text-decoration:none;color:var(--blue);transition:transform .18s ease}
+.logo:hover{transform:translateY(-1px)}
+.catalog-button{height:46px;border:0;border-radius:11px;background:var(--blue);color:#fff;padding:0 18px;display:flex;align-items:center;gap:10px;font-weight:800;transition:transform .16s ease,background .16s ease,box-shadow .16s ease}
+.catalog-button:hover{transform:translateY(-1px);box-shadow:0 9px 18px rgba(0,91,255,.2)}
 .catalog-button.open{background:var(--blue-dark)}
-.grid-mark{width:18px;height:18px;display:grid;grid-template-columns:repeat(2,7px);gap:4px}
+.catalog-button.open .grid-mark{transform:rotate(45deg)}
+.grid-mark{width:18px;height:18px;display:grid;grid-template-columns:repeat(2,7px);gap:4px;transition:transform .2s ease}
 .grid-mark span{display:block;border-radius:2px;background:#fff}
 .search-box{height:46px;border:2px solid var(--blue);border-radius:12px;display:grid;grid-template-columns:1fr auto;align-items:center;overflow:hidden;background:#fff}
 .search-box input{border:0;outline:0;min-width:0;padding:0 12px;color:var(--ink)}
 .search-box input::placeholder{color:#8798aa}
-.search-submit{height:100%;min-width:66px;border:0;background:var(--blue);color:#fff;font-weight:900}
+.search-submit{height:100%;min-width:66px;border:0;background:var(--blue);color:#fff;font-weight:900;transition:background .16s ease}
+.search-submit:hover{background:var(--blue-dark)}
 .header-actions{display:flex;gap:18px;align-items:center;justify-content:flex-end}
 .nav-link,.nav-button{position:relative;min-width:66px;border:0;background:transparent;color:#728397;text-decoration:none;display:flex;flex-direction:column;align-items:center;gap:5px;font-size:12px;line-height:1.15}
 .nav-link:hover,.nav-button:hover{color:var(--blue)}
@@ -60,60 +68,58 @@ a{color:inherit}
 .subnav a:hover{color:var(--blue)}
 .fresh{color:#00a38f;font-weight:800}
 .pickup{color:var(--blue);font-weight:700}
-.account-wrap{position:relative}
-.account-menu{position:absolute;right:-26px;top:50px;width:305px;background:#fff;border:1px solid var(--line);border-radius:0 0 14px 14px;box-shadow:0 18px 44px rgba(0,26,52,.18);padding:12px 0;display:none}
-.account-menu.open{display:block}
-.account-menu:before{content:"";position:absolute;right:112px;top:-10px;border-left:10px solid transparent;border-right:10px solid transparent;border-bottom:10px solid #fff}
-.menu-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;text-decoration:none;color:#1b2838}
+.account-wrap{position:relative;display:flex;justify-content:center}
+.account-menu{position:absolute;left:50%;top:48px;width:min(274px,calc(100vw - 28px));background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 16px 36px rgba(0,26,52,.16);padding:10px;display:none;transform:translateX(-50%)}
+.account-menu.open{display:block;animation:accountMenuIn .18s ease both}
+.account-menu:before{content:"";position:absolute;left:50%;top:-9px;transform:translateX(-50%);border-left:9px solid transparent;border-right:9px solid transparent;border-bottom:9px solid #fff}
+.menu-item{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border-radius:10px;text-decoration:none;color:#1b2838}
 .menu-item:hover{background:#f5f8fc}
 .menu-item small{display:block;color:#667b90;font-size:14px;margin-top:2px}
 .menu-badge{min-width:32px;height:22px;border-radius:999px;background:var(--pink);color:#fff;display:grid;place-items:center;font-size:12px;font-weight:900}
-.menu-separator{height:1px;background:var(--line);margin:10px 0}
+.menu-separator{height:1px;background:var(--line);margin:8px -10px}
 .account-title{font-weight:900;color:#16314c;padding:0 14px 10px}
-.catalog-panel{position:fixed;inset:82px 0 0;z-index:65;background:#fff;display:none;overflow:hidden}
-.catalog-panel.open{display:block}
-.catalog-inner{height:100%;max-width:1410px;margin:0 auto;display:grid;grid-template-columns:270px 1fr;gap:28px;padding:18px 22px}
-.catalog-sidebar{border-right:1px solid var(--line);padding-right:16px;overflow:auto}
-.catalog-root{height:58px;border:1px solid var(--line);border-radius:12px;display:flex;align-items:center;gap:12px;padding:0 12px;font-weight:800;margin-bottom:14px}
-.category-list{display:grid;gap:4px}
-.category-item{border:0;background:transparent;text-align:left;border-radius:10px;padding:12px 10px;display:flex;align-items:center;gap:12px;color:#1f3042}
-.category-item.active,.category-item:hover{background:#f2f6fb;color:var(--blue)}
-.category-ico{width:18px;height:18px;border-radius:5px;background:#c5cfda;display:inline-block;flex:0 0 auto}
-.catalog-content{overflow:auto;padding-right:10px}
-.catalog-content h1{font-size:34px;margin:0 0 24px}
-.catalog-columns{columns:3 260px;column-gap:58px}
-.catalog-group{break-inside:avoid;margin:0 0 28px}
+.catalog-panel{position:fixed;inset:82px 0 0;z-index:65;background:rgba(255,255,255,.98);opacity:0;visibility:hidden;pointer-events:none;overflow:hidden;transform:translateY(-10px);transition:opacity .2s ease,transform .22s ease,visibility .22s}
+.catalog-panel.open{opacity:1;visibility:visible;pointer-events:auto;transform:translateY(0)}
+.catalog-inner{height:100%;max-width:1410px;margin:0 auto;padding:28px 22px 42px}
+.catalog-content{height:100%;overflow:auto}
+.catalog-content h1{font-size:36px;margin:0 0 22px}
+.catalog-columns{display:grid;grid-template-columns:repeat(3,minmax(220px,1fr));gap:16px 18px}
+.catalog-group{border:1px solid #e6edf6;border-radius:8px;background:#fff;padding:18px;box-shadow:0 1px 0 rgba(0,26,52,.03);transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}
+.catalog-group:hover{transform:translateY(-2px);border-color:#cfe0f3;box-shadow:0 12px 28px rgba(0,26,52,.08)}
 .catalog-group h3{margin:0 0 12px;font-size:17px}
 .catalog-group a{display:block;text-decoration:none;color:#5f7187;margin:0 0 10px;line-height:1.35}
+.catalog-group a:last-child{margin-bottom:0}
 .catalog-group a:hover{color:var(--blue)}
-.catalog-more{color:var(--blue)!important;font-weight:700}
 .shell{max-width:1410px;margin:0 auto;padding:28px 22px 60px}
 .page-view{display:none}
-.page-view.active{display:block}
-.promo-banner{min-height:260px;border-radius:0 0 28px 28px;background:#080305 url('/static/banners/phone-sale-banner.png') center/cover no-repeat;margin:-28px 0 24px;overflow:hidden;box-shadow:0 18px 38px rgba(0,26,52,.12)}
+.page-view.active{display:block;animation:softRise .22s ease both}
+.promo-banner{height:clamp(150px,22vw,300px);border-radius:24px;background:#080305;margin:0 0 14px;overflow:hidden;box-shadow:0 18px 38px rgba(0,26,52,.12);animation:softRise .32s ease both}
+.promo-banner img{width:100%;height:100%;display:block;object-fit:cover;object-position:center}
 .section-line{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin:22px 0 18px}
 .section-line h1,.section-line h2{margin:0;font-size:34px;line-height:1.05}
 .section-tabs{display:flex;align-items:center;gap:12px;color:#6b7f94;font-size:30px;font-weight:900}
 .section-tabs a{text-decoration:none;color:#6b7f94}
 .section-tabs a.active{color:#000}
 .tiny-count{font-size:13px;background:#e8eef6;border-radius:999px;padding:3px 7px;color:#60758b;vertical-align:middle}
-.home-tools{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:18px}
-.quick-filters{display:flex;gap:8px;overflow:auto;padding-bottom:2px}
-.pill{height:38px;border:0;border-radius:999px;background:#fff;color:#304256;padding:0 14px;font-weight:700;white-space:nowrap}
+.home-tools{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:10px}
+.pill{height:38px;border:0;border-radius:999px;background:#fff;color:#304256;padding:0 14px;font-weight:700;white-space:nowrap;transition:transform .16s ease,background .16s ease,color .16s ease}
+.pill:hover{transform:translateY(-1px)}
 .pill.active{background:#001a34;color:#fff}
-.brand-row{display:flex;gap:8px;overflow:auto;margin:-7px 0 18px;padding-bottom:2px}
-.brand-pill{height:34px;border:1px solid var(--line);border-radius:999px;background:#fff;color:#52677c;padding:0 13px;font-weight:800;white-space:nowrap}
+.brand-row{display:flex;gap:8px;overflow:auto;margin:0 0 16px;padding-bottom:2px}
+.brand-pill{height:34px;border:1px solid var(--line);border-radius:999px;background:#fff;color:#52677c;padding:0 13px;font-weight:800;white-space:nowrap;transition:transform .16s ease,border-color .16s ease,background .16s ease}
+.brand-pill:hover{transform:translateY(-1px);border-color:#b9cce0}
 .brand-pill.active{border-color:var(--blue);background:#eef6ff;color:var(--blue)}
 .select{height:44px;border:1px solid var(--line);border-radius:12px;background:#fff;padding:0 42px 0 14px;color:#1b2838;outline:none}
-.content-grid{display:grid;grid-template-columns:1fr;gap:22px}
 .product-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:18px}
-.product-card{background:#fff;border-radius:8px;overflow:hidden;position:relative;min-width:0;box-shadow:0 1px 0 rgba(0,26,52,.04);display:flex;flex-direction:column}
-.product-card:hover{box-shadow:var(--shadow)}
+.product-card{background:#fff;border-radius:8px;overflow:hidden;position:relative;min-width:0;box-shadow:0 1px 0 rgba(0,26,52,.04);display:flex;flex-direction:column;animation:softRise .24s ease both;transition:transform .18s ease,box-shadow .18s ease}
+.product-card:hover{transform:translateY(-3px);box-shadow:var(--shadow)}
 .product-media{position:relative;display:block;aspect-ratio:1/1.22;background:#fff;overflow:hidden;text-decoration:none}
-.product-media img{width:100%;height:100%;object-fit:contain;display:block;padding:8px;background:#fff}
+.product-media img{width:100%;height:100%;object-fit:contain;display:block;padding:8px;background:#fff;transition:transform .22s ease}
+.product-card:hover .product-media img{transform:scale(1.035)}
 .media-placeholder{height:100%;display:grid;place-items:center;background:linear-gradient(135deg,#e9f1ff,#f6f9ff)}
 .media-placeholder span{font-weight:900;color:#8aa0b8;font-size:34px;letter-spacing:.04em}
-.heart{position:absolute;right:10px;top:10px;width:34px;height:34px;border:0;border-radius:50%;background:rgba(255,255,255,.94);font-size:22px;line-height:1;color:#001a34;box-shadow:0 4px 12px rgba(0,26,52,.12)}
+.heart{position:absolute;right:10px;top:10px;width:34px;height:34px;border:0;border-radius:50%;background:rgba(255,255,255,.94);font-size:22px;line-height:1;color:#001a34;box-shadow:0 4px 12px rgba(0,26,52,.12);transition:transform .16s ease,color .16s ease}
+.heart:hover{transform:scale(1.08)}
 .heart.active{color:var(--pink)}
 .sale-label{position:absolute;left:8px;bottom:8px;background:var(--pink);color:#fff;border-radius:6px;padding:5px 9px;font-weight:900;font-size:13px}
 .out-label{position:absolute;left:8px;bottom:8px;background:#001a34;color:#fff;border-radius:6px;padding:5px 9px;font-weight:900;font-size:13px}
@@ -125,13 +131,15 @@ a{color:inherit}
 .product-name{display:block;text-decoration:none;color:#001a34;line-height:1.28;min-height:41px;overflow:hidden}
 .meta-row{display:flex;gap:6px;align-items:center;color:#667b90;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .star{color:#f5a000;font-weight:900}
-.delivery-button{height:36px;border:0;border-radius:8px;background:var(--blue);color:#fff;font-weight:900;width:100%;margin-top:auto}
+.delivery-button{height:36px;border:0;border-radius:8px;background:var(--blue);color:#fff;font-weight:900;width:100%;margin-top:auto;transition:transform .16s ease,background .16s ease}
+.delivery-button:hover:not(:disabled){transform:translateY(-1px);background:var(--blue-dark)}
 .delivery-button:disabled{background:#d7e0ea;color:#7f91a4}
 .empty-state{background:#fff;border-radius:22px;padding:46px 22px;text-align:center;color:#667b90}
 .empty-illustration{width:118px;height:88px;border-radius:28px;background:linear-gradient(135deg,#f8ce9a,#d98b4d);margin:0 auto 18px;position:relative}
 .empty-illustration:before{content:"";position:absolute;left:22px;right:22px;top:-16px;height:32px;background:#f7bd77;border-radius:9px;transform:skewX(-18deg)}
 .empty-state h2{margin:0 0 8px;color:#000;font-size:25px}
-.blue-button,.light-button,.dark-button{height:46px;border:0;border-radius:11px;padding:0 18px;font-weight:900;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.blue-button,.light-button,.dark-button{height:46px;border:0;border-radius:11px;padding:0 18px;font-weight:900;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:transform .16s ease,background .16s ease,box-shadow .16s ease}
+.blue-button:hover,.light-button:hover,.dark-button:hover{transform:translateY(-1px)}
 .blue-button{background:var(--blue);color:#fff}
 .blue-button:hover{background:var(--blue-dark)}
 .light-button{background:#eef6ff;color:var(--blue)}
@@ -156,12 +164,13 @@ a{color:inherit}
 .check{width:22px;height:22px;border-radius:7px;background:var(--blue);display:grid;place-items:center;color:#fff;font-size:15px;font-weight:900}
 .cart-list{padding:16px}
 .cart-list h3{margin:0 0 10px;font-size:17px;background:#f4f7fb;border-radius:14px;padding:14px 16px}
-.cart-row{display:grid;grid-template-columns:24px 92px minmax(0,1fr) 150px 132px;gap:12px;align-items:start;padding:18px 0;border-bottom:1px solid #eef2f7}
+.cart-row{display:grid;grid-template-columns:24px 92px minmax(0,1fr) 150px 132px;gap:12px;align-items:start;padding:18px 0;border-bottom:1px solid #eef2f7;animation:softRise .22s ease both}
 .cart-row:last-child{border-bottom:0}
 .cart-row img,.cart-picture{width:92px;height:118px;border-radius:10px;object-fit:contain;background:#fff;display:grid;place-items:center;color:#8fa0b2;font-weight:900}
 .cart-name{font-size:17px;line-height:1.28;margin-bottom:10px}
 .cart-actions{display:flex;gap:8px;flex-wrap:wrap}
-.mini-action{height:30px;border:0;border-radius:9px;background:#f3f6fa;color:#001a34;padding:0 11px;font-weight:800}
+.mini-action{height:30px;border:0;border-radius:9px;background:#f3f6fa;color:#001a34;padding:0 11px;font-weight:800;transition:transform .16s ease,background .16s ease}
+.mini-action:hover{transform:translateY(-1px);background:#e7eef7}
 .cart-price{font-size:18px;font-weight:900;color:var(--pink)}
 .cart-old{font-size:13px;color:#91a0af;text-decoration:line-through;font-weight:700;margin-top:3px}
 .quantity-box{height:36px;border-radius:10px;background:#f3f6fa;display:grid;grid-template-columns:36px 1fr 36px;align-items:center;text-align:center;font-weight:900}
@@ -190,13 +199,16 @@ a{color:inherit}
 .tab-button.active{background:#000;color:#fff}
 .orders-empty{min-height:340px;display:grid;place-items:center;text-align:center}
 .orders-list{display:grid;gap:12px;margin-top:16px}
-.order-card{background:#fff;border-radius:18px;padding:18px;border:1px solid #edf2f7}
+.order-card{background:#fff;border-radius:18px;padding:18px;border:1px solid #edf2f7;animation:softRise .24s ease both;transition:transform .18s ease,box-shadow .18s ease}
+.order-card:hover{transform:translateY(-2px);box-shadow:0 12px 28px rgba(0,26,52,.08)}
 .order-card-head{display:flex;justify-content:space-between;gap:16px;margin-bottom:12px}
 .status-chip{border-radius:999px;background:#fff1f6;color:var(--pink);padding:6px 10px;font-weight:900;font-size:13px}
 .recommend-block{background:#fff;border-radius:22px;padding:22px;margin-top:16px}
 .recommend-block h2{margin:0 0 16px;font-size:28px}
 .modal-cover{position:fixed;inset:0;background:rgba(0,26,52,.42);z-index:120;display:none}
+.modal-cover[style*="block"]{animation:softRise .16s ease both}
 .checkout-modal{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(760px,94vw);max-height:92vh;overflow:auto;background:#fff;border-radius:22px;z-index:130;display:none;box-shadow:0 28px 80px rgba(0,26,52,.28)}
+.checkout-modal[style*="block"]{animation:popIn .2s ease both}
 .modal-head{display:flex;justify-content:space-between;gap:14px;align-items:center;padding:20px 22px;border-bottom:1px solid var(--line)}
 .modal-head h2{margin:0;font-size:24px}
 .close{width:40px;height:40px;border:0;border-radius:12px;background:#f2f6fb;font-weight:900;font-size:22px}
@@ -212,13 +224,16 @@ a{color:inherit}
 .success{display:none;text-align:center;padding:38px 24px}
 .success-mark{width:76px;height:76px;border-radius:50%;margin:0 auto 16px;background:var(--green);color:#fff;display:grid;place-items:center;font-size:44px;font-weight:900}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:150;background:#001a34;color:#fff;border-radius:999px;padding:12px 18px;display:none;font-weight:900;box-shadow:0 12px 30px rgba(0,26,52,.25)}
+.toast[style*="block"]{animation:toastIn .18s ease both}
+@media(prefers-reduced-motion:reduce){
+  *,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+}
 .muted{color:#667b90}
-.only-mobile{display:none}
 @media(max-width:1100px){
-  .header-main{grid-template-columns:auto auto 1fr}.header-actions{grid-column:1/-1;justify-content:space-between}.subnav{overflow:auto}.cart-layout,.orders-layout,.favorites-layout{grid-template-columns:1fr}.summary-panel,.profile-panel,.filter-panel{position:static}.cart-row{grid-template-columns:24px 78px 1fr}.cart-price,.quantity-box{grid-column:3}.catalog-inner{grid-template-columns:230px 1fr}
+  .header-main{grid-template-columns:auto auto 1fr}.header-actions{grid-column:1/-1;justify-content:space-between}.subnav{overflow:auto}.cart-layout,.orders-layout,.favorites-layout{grid-template-columns:1fr}.summary-panel,.profile-panel,.filter-panel{position:static}.cart-row{grid-template-columns:24px 78px 1fr}.cart-price,.quantity-box{grid-column:3}.catalog-columns{grid-template-columns:repeat(2,minmax(220px,1fr))}
 }
 @media(max-width:760px){
-  body{font-size:15px}.header-card{padding:8px 10px 12px;border-radius:0 0 18px 18px}.header-main{grid-template-columns:1fr auto}.logo{font-size:34px}.catalog-button{height:42px;padding:0 12px}.search-box{grid-column:1/-1;order:3}.header-actions{gap:6px;overflow:auto}.nav-link,.nav-button{min-width:58px}.nav-icon{width:25px;height:22px}.subnav-right{display:none}.shell{padding:18px 10px 50px}.promo-banner{min-height:180px;margin:-18px 0 18px;border-radius:0 0 18px 18px;background-position:center}.section-line{align-items:flex-start;flex-direction:column}.section-line h1,.section-line h2,.section-tabs{font-size:27px}.home-tools{align-items:flex-start;flex-direction:column}.product-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.card-body{min-height:170px}.price{font-size:18px}.old-price,.discount,.meta-row{font-size:12px}.catalog-panel{inset:64px 0 0}.catalog-inner{grid-template-columns:1fr;padding:12px}.catalog-sidebar{display:none}.catalog-content h1{font-size:28px}.catalog-columns{columns:1}.checkout-grid,.delivery-choice{grid-template-columns:1fr}.cart-row{gap:9px}.cart-row img,.cart-picture{width:78px;height:98px}.account-menu{right:-4px;width:290px}.only-mobile{display:inline}
+  body{font-size:15px}.header-card{padding:8px 10px 12px;border-radius:0 0 18px 18px}.header-main{grid-template-columns:1fr auto}.logo{font-size:34px}.catalog-button{height:42px;padding:0 12px}.search-box{grid-column:1/-1;order:3}.header-actions{gap:6px;overflow:auto}.nav-link,.nav-button{min-width:58px}.nav-icon{width:25px;height:22px}.subnav-right{display:none}.shell{padding:18px 10px 50px}.promo-banner{margin:0 0 18px;border-radius:18px}.section-line{align-items:flex-start;flex-direction:column}.section-line h1,.section-line h2,.section-tabs{font-size:27px}.home-tools{align-items:flex-start;flex-direction:column}.product-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.card-body{min-height:170px}.price{font-size:18px}.old-price,.discount,.meta-row{font-size:12px}.catalog-panel{inset:64px 0 0}.catalog-inner{padding:14px 10px 28px}.catalog-content h1{font-size:28px}.catalog-columns{grid-template-columns:1fr}.catalog-group{padding:15px}.checkout-grid,.delivery-choice{grid-template-columns:1fr}.cart-row{gap:9px}.cart-row img,.cart-picture{width:78px;height:98px}.account-menu{width:min(274px,calc(100vw - 20px))}
 }
 </style>
 </head>
@@ -271,32 +286,13 @@ a{color:inherit}
 
 <section class="catalog-panel" id="catalogPanel" aria-hidden="true">
   <div class="catalog-inner">
-    <aside class="catalog-sidebar">
-      <div class="catalog-root"><span class="grid-mark" aria-hidden="true"><span></span><span></span><span></span><span></span></span>Весь Shop Go</div>
-      <div class="category-list" id="catalogCategoryList">
-        <button class="category-item active" data-catalog-query=""><span class="category-ico"></span>Электроника</button>
-        <button class="category-item" data-catalog-query="смартфон"><span class="category-ico"></span>Смартфоны</button>
-        <button class="category-item" data-catalog-query="ноутбук"><span class="category-ico"></span>Ноутбуки</button>
-        <button class="category-item" data-catalog-query="компьютер"><span class="category-ico"></span>ПК и моноблоки</button>
-        <button class="category-item" data-catalog-query="планшет"><span class="category-ico"></span>Планшеты</button>
-        <button class="category-item" data-catalog-query="часы"><span class="category-ico"></span>Смарт-часы</button>
-        <button class="category-item" data-catalog-query="комплектующие"><span class="category-ico"></span>Комплектующие</button>
-        <button class="category-item" data-catalog-query="аксессуары"><span class="category-ico"></span>Аксессуары</button>
-        {{range .categories}}<button class="category-item" data-catalog-category="{{.ID}}"><span class="category-ico"></span>{{.Name}}</button>{{end}}
-      </div>
-    </aside>
     <div class="catalog-content">
       <h1>Электроника</h1>
       <div class="catalog-columns">
-        <div class="catalog-group"><h3>Телефоны и смарт-часы</h3><a href="/?search=смартфон">Смартфоны</a><a href="/?search=аксессуары смартфон">Аксессуары для смартфонов</a><a href="/?search=часы">Смарт-часы</a><a href="/?search=браслет">Фитнес-браслеты</a><a class="catalog-more" href="/?search=телефон">Еще</a></div>
-        <div class="catalog-group"><h3>Бренды телефонов</h3><a href="/?brand=Samsung">Samsung</a><a href="/?brand=Xiaomi">Xiaomi</a><a href="/?brand=Apple">Apple</a><a href="/?brand=Huawei">Huawei</a><a href="/?brand=Honor">Honor</a><a class="catalog-more" href="/?search=телефон">Все телефоны</a></div>
-        <div class="catalog-group"><h3>Ноутбуки и планшеты</h3><a href="/?search=ноутбук">Ноутбуки</a><a href="/?search=игровой ноутбук">Игровые ноутбуки</a><a href="/?search=планшет">Планшеты</a><a href="/?search=электронная книга">Электронные книги</a><a href="/?search=чехол">Чехлы и подставки</a><a class="catalog-more" href="/?search=ноутбук">Еще</a></div>
-        <div class="catalog-group"><h3>Компьютеры и периферия</h3><a href="/?search=монитор">Мониторы</a><a href="/?search=системный блок">Системные блоки</a><a href="/?search=моноблок">Моноблоки</a><a href="/?search=клавиатура">Периферия</a><a href="/?search=роутер">Сетевое оборудование</a><a class="catalog-more" href="/?search=компьютер">Еще</a></div>
-        <div class="catalog-group"><h3>Фото и видеокамеры</h3><a href="/?search=экшн камера">Экшн-камеры</a><a href="/?search=видеокамера">Видеокамеры</a><a href="/?search=фотоаппарат">Фотоаппараты</a><a href="/?search=объектив">Объективы</a><a class="catalog-more" href="/?search=камера">Еще</a></div>
-        <div class="catalog-group"><h3>Умный дом</h3><a href="/?search=умный дом">Аксессуары</a><a href="/?search=реле">Выключатели и реле</a><a href="/?search=датчик">Датчики и регуляторы</a><a href="/?search=лампа">Освещение</a><a href="/?search=розетка">Розетки</a><a class="catalog-more" href="/?search=умный">Еще</a></div>
-        <div class="catalog-group"><h3>ТВ и видеотехника</h3><a href="/?search=телевизор">Телевизоры</a><a href="/?search=приставка">ТВ-приставки</a><a href="/?search=кронштейн">Кронштейны</a><a href="/?search=проектор">Проекторы</a><a href="/?search=пульт">Пульты ДУ</a><a class="catalog-more" href="/?search=тв">Еще</a></div>
-        <div class="catalog-group"><h3>Офисная техника</h3><a href="/?search=принтер">Принтеры</a><a href="/?search=мфу">МФУ</a><a href="/?search=картридж">Картриджи</a><a href="/?search=сканер">Сканеры</a><a class="catalog-more" href="/?search=офисная техника">Еще</a></div>
-        <div class="catalog-group"><h3>Аксессуары для электроники</h3><a href="/?search=кабель">Кабели и переходники</a><a href="/?search=power bank">Внешние аккумуляторы</a><a href="/?search=батарейка">Батарейки</a><a href="/?search=зарядное">Зарядные устройства</a><a class="catalog-more" href="/?search=аксессуары">Еще</a></div>
+        <div class="catalog-group"><h3>Телефоны и смарт-часы</h3><a href="/?search=смартфон">Смартфоны</a><a href="/?search=часы">Смарт-часы</a><a href="/?brand=Samsung">Samsung</a><a href="/?brand=Xiaomi">Xiaomi</a><a href="/?brand=Apple">Apple</a><a href="/?brand=Huawei">Huawei</a></div>
+        <div class="catalog-group"><h3>Аксессуары и звук</h3><a href="/?search=AirPods">AirPods</a><a href="/?search=Buds">Samsung Galaxy Buds</a><a href="/?search=наушники">Наушники</a><a href="/?search=JBL">Портативные колонки</a><a href="/?search=SmartTag">Метки для поиска вещей</a></div>
+        <div class="catalog-group"><h3>Зарядка и питание</h3><a href="/?search=MagSafe">MagSafe</a><a href="/?search=заряд">Зарядные устройства</a><a href="/?search=Power Bank">Внешние аккумуляторы</a><a href="/?brand=Anker">Anker</a><a href="/?brand=Belkin">Belkin</a></div>
+        <div class="catalog-group"><h3>Компьютерные аксессуары</h3><a href="/?search=мышь">Мыши</a><a href="/?search=клавиатура">Клавиатуры</a><a href="/?search=SSD">Внешние SSD</a><a href="/?brand=Logitech">Logitech</a><a href="/?brand=Keychron">Keychron</a><a href="/?brand=SanDisk">SanDisk</a></div>
       </div>
     </div>
   </div>
@@ -304,16 +300,9 @@ a{color:inherit}
 
 <main class="shell">
   <section class="page-view" id="homePage">
-    <div class="promo-banner" role="img" aria-label="Скидки на телефоны до 80 процентов"></div>
-    <div class="section-line">
-      <h1>Подобрали для вас</h1>
-      <span class="muted" id="resultInfo">Загрузка товаров...</span>
-    </div>
+    <div class="promo-banner"><img src="/static/banners/phone-sale-banner.png" alt="Скидки на телефоны до 80 процентов"></div>
     <div class="home-tools">
-      <div class="quick-filters" id="categoryPills">
-        <button class="pill active" data-category="">Все товары</button>
-        {{range .categories}}<button class="pill" data-category="{{.ID}}">{{.Name}}</button>{{end}}
-      </div>
+      <span class="muted" id="resultInfo">Загрузка товаров...</span>
       <select class="select" id="sortSelect">
         <option value="id_asc">Сначала популярные</option>
         <option value="newest">Сначала новые</option>
@@ -458,8 +447,8 @@ let state = {
   categories: [],
   brands: [],
   cart: {items:[], total:0},
-	favorites: store.get('shopgo:favorites', []),
-	orders: store.get('shopgo:orders', []),
+	favorites: [],
+	orders: [],
 	orderTab: 'active',
 	pickupPoints: [],
   selectedPickupId: 0,
@@ -469,6 +458,23 @@ let state = {
   total: 0,
   totalPages: 1
 };
+
+function storagePrefix(){
+  return state.user && state.user.id ? 'shopgo:user:' + state.user.id : 'shopgo:guest';
+}
+function storageKey(name){
+  return storagePrefix() + ':' + name;
+}
+function loadScopedState(){
+  state.favorites = store.get(storageKey('favorites'), []);
+  state.orders = store.get(storageKey('orders'), []);
+}
+function saveFavorites(){
+  store.set(storageKey('favorites'), state.favorites);
+}
+function saveOrders(){
+  store.set(storageKey('orders'), state.orders);
+}
 
 function currentRoute(){
   const path = location.pathname;
@@ -534,6 +540,7 @@ function emptyProducts(text, action){
 async function loadUser(){
   const data = await api('/auth/me');
   state.user = data.authenticated ? data.user : null;
+  loadScopedState();
   const name = state.user ? state.user.username : 'Войти';
   qs('accountName').textContent = name;
   qs('profileName').textContent = state.user ? state.user.username : 'Гость';
@@ -570,6 +577,7 @@ async function loadProducts(){
   state.products = data.items || [];
   state.total = Number(data.total || 0);
   state.totalPages = Number(data.total_page || 1);
+  await refreshFavoriteProducts();
   renderHome();
   renderFavorites();
   renderRecommendations();
@@ -600,7 +608,42 @@ async function refreshStoredOrders(){
     }
   }
   state.orders = refreshed;
-  store.set('shopgo:orders', state.orders);
+  saveOrders();
+}
+async function loadUserOrders(){
+  if(!state.user) return;
+  try{
+    const data = await api('/orders/my');
+    if(data && Array.isArray(data.items)){
+      state.orders = data.items.map(order => Object.assign({order_id: order.id}, order));
+      saveOrders();
+    }
+  }catch(e){}
+}
+async function refreshFavoriteProducts(){
+  if(!state.favorites.length) return;
+  const seen = new Set();
+  const productsById = new Map(state.products.map(p => [Number(p.id), p]));
+  const nextFavorites = [];
+  for(const rawId of state.favorites){
+    const id = Number(rawId);
+    if(!id || seen.has(id)) continue;
+    seen.add(id);
+    if(productsById.has(id)){
+      nextFavorites.push(id);
+      continue;
+    }
+    try{
+      const product = await api('/products/' + encodeURIComponent(id));
+      state.products.push(product);
+      productsById.set(id, product);
+      nextFavorites.push(id);
+    }catch(e){}
+  }
+  if(nextFavorites.length !== state.favorites.length || nextFavorites.some((id, idx) => Number(state.favorites[idx]) !== id)){
+    state.favorites = nextFavorites;
+    saveFavorites();
+  }
 }
 function setBadge(id, value){
   const el = qs(id);
@@ -618,7 +661,7 @@ function updateBadges(){
   setBadge('favBadge', state.favorites.length);
   setBadge('menuFavBadge', state.favorites.length);
   qs('favoritesTitleCount').textContent = state.favorites.length;
-  setBadge('ordersBadge', state.orders.length);
+  setBadge('ordersBadge', state.orders.filter(order => !isFinishedOrder(order.status)).length);
 }
 function renderHome(){
   const grid = qs('productsGrid');
@@ -790,7 +833,7 @@ async function setQty(id, qty){
 function toggleFavorite(id){
   const n = Number(id);
   state.favorites = isFavorite(n) ? state.favorites.filter(x => Number(x) !== n) : [n].concat(state.favorites);
-  store.set('shopgo:favorites', state.favorites);
+  saveFavorites();
   updateBadges();
   renderHome();
   renderFavorites();
@@ -862,7 +905,7 @@ async function submitOrder(e){
     })});
     const saved = Object.assign({}, order, {items:snapshot.items || [], created_at:new Date().toLocaleString('ru-RU')});
     state.orders = [saved].concat(state.orders).slice(0,20);
-    store.set('shopgo:orders', state.orders);
+    saveOrders();
     await loadCart();
     renderOrders();
     qs('checkoutFormWrap').style.display = 'none';
@@ -891,11 +934,6 @@ document.addEventListener('click', e => {
   if(brand){setBrand(brand.dataset.brand); return}
   const orderTab = e.target.closest('[data-order-tab]');
   if(orderTab){setOrderTab(orderTab.dataset.orderTab); return}
-  const catalogCategory = e.target.closest('[data-catalog-category],[data-catalog-query]');
-  if(catalogCategory){
-    applyCatalogSelection(catalogCategory.dataset.catalogCategory, catalogCategory.dataset.catalogQuery, catalogCategory.dataset.catalogBrand);
-    return;
-  }
   if(!e.target.closest('.account-wrap')) qs('accountMenu').classList.remove('open');
 });
 qs('catalogToggle').addEventListener('click', openCatalog);
@@ -933,6 +971,7 @@ window.addEventListener('keydown', e => {if(e.key === 'Escape'){closeCatalog(); 
   document.querySelectorAll('[data-category]').forEach(btn=>btn.classList.toggle('active', String(btn.dataset.category || '') === String(qs('categoryFilter').value || '')));
   showRoute();
   await Promise.all([loadUser(), loadCategories(), loadBrands(), loadCart()]);
+  await loadUserOrders();
   await refreshStoredOrders();
   await loadProducts();
   renderOrders();
@@ -987,15 +1026,15 @@ const shopProductHTML = `<!doctype html>
 <div class="toast" id="toast"></div>
 <script>
 const productId = {{.product.ID}};
+let currentUser = null;
 const qs = id => document.getElementById(id);
 function toast(text){const el=qs('toast');el.textContent=text;el.style.display='block';clearTimeout(window.t);window.t=setTimeout(()=>el.style.display='none',1800)}
 async function api(url, options){const r=await fetch(url,Object.assign({credentials:'include'},options||{}));const text=await r.text();let p={};try{p=text?JSON.parse(text):{}}catch(e){p={error:text}}if(!r.ok)throw new Error(p.error||text||'Ошибка');return p}
+function favoriteKey(){return currentUser && currentUser.id ? 'shopgo:user:'+currentUser.id+':favorites' : 'shopgo:guest:favorites'}
+async function loadCurrentUser(){try{const data=await api('/auth/me');currentUser=data.authenticated?data.user:null}catch(e){currentUser=null}}
 qs('addBtn').addEventListener('click',async()=>{try{await api('/cart/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({product_id:productId,quantity:1})});toast('Товар добавлен в корзину')}catch(e){toast(e.message)}})
-qs('favBtn').addEventListener('click',()=>{let fav=[];try{fav=JSON.parse(localStorage.getItem('shopgo:favorites'))||[]}catch(e){};fav=fav.map(Number).includes(Number(productId))?fav.filter(x=>Number(x)!==Number(productId)):[productId].concat(fav);localStorage.setItem('shopgo:favorites',JSON.stringify(fav));toast('Избранное обновлено')})
+qs('favBtn').addEventListener('click',async()=>{if(currentUser===null)await loadCurrentUser();let fav=[];try{fav=JSON.parse(localStorage.getItem(favoriteKey()))||[]}catch(e){};fav=fav.map(Number).includes(Number(productId))?fav.filter(x=>Number(x)!==Number(productId)):[productId].concat(fav);localStorage.setItem(favoriteKey(),JSON.stringify(fav));toast('Избранное обновлено')})
+loadCurrentUser();
 </script>
 </body>
 </html>`
-
-const shopCartHTML = `<!doctype html>
-<html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Корзина</title></head>
-<body><script>location.href='/cart/view'</script><a href="/cart/view">Открыть корзину</a></body></html>`

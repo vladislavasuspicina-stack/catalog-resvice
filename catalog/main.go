@@ -28,6 +28,7 @@ func main() {
 	r.GET("/cart", GetCart)
 	r.POST("/order", CreateOrderHandler)
 	r.GET("/order/:id", GetOrderStatus)
+	r.GET("/orders/my", UserListOrders)
 	r.GET("/pickup-points", GetPickupPoints)
 
 	// Customer auth
@@ -58,13 +59,17 @@ func main() {
 		admin.GET("/orders", AdminListOrders)
 		admin.GET("/orders/:id", AdminGetOrder)
 		admin.PUT("/orders/:id/status", AdminUpdateOrderStatus)
+		admin.DELETE("/orders/:id", AdminDeleteOrder)
+		// users
+		admin.GET("/users", AdminListUsers)
+		admin.PUT("/users/:id", AdminUpdateUser)
+		admin.DELETE("/users/:id", AdminDeleteUser)
 	}
 
 	// Web UI
 	t := template.Must(template.New("index").Parse(shopIndexHTML))
 	template.Must(t.New("admin").Parse(adminHTML))
 	template.Must(t.New("product").Parse(shopProductHTML))
-	template.Must(t.New("cart").Parse(shopCartHTML))
 	template.Must(t.New("auth").Parse(authHTML))
 	r.SetHTMLTemplate(t)
 
@@ -81,7 +86,10 @@ func main() {
 		var categories []Category
 		var products []Product
 		DB.Find(&categories)
-		DB.Order("id asc").Limit(12).Find(&products)
+		DB.Preload("Categories").Order("id asc").Limit(12).Find(&products)
+		for i := range products {
+			enrichProduct(&products[i])
+		}
 		c.HTML(http.StatusOK, "index", gin.H{"categories": categories, "products": products})
 	}
 	r.GET("/", renderShopPage)
@@ -94,11 +102,11 @@ func main() {
 	r.GET("/product/:id", func(c *gin.Context) {
 		id := c.Param("id")
 		var p Product
-		if err := DB.First(&p, id).Error; err != nil {
+		if err := DB.Preload("Categories").First(&p, id).Error; err != nil {
 			c.String(http.StatusNotFound, "product not found")
 			return
 		}
-		enrichProductBrand(&p)
+		enrichProduct(&p)
 		c.HTML(http.StatusOK, "product", gin.H{"product": p})
 	})
 
@@ -131,29 +139,4 @@ func sanitizeNextPath(next string) string {
 		return next
 	}
 	return "/"
-}
-
-func redirectToAuth(c *gin.Context) {
-	next := sanitizeNextPath(c.Request.URL.RequestURI())
-	c.Redirect(http.StatusFound, "/auth?next="+url.QueryEscape(next))
-}
-
-// ==================== SIMPLE LOGIN PAGE ====================
-func adminLoginPage() string {
-	return `<!doctype html><html><head><meta charset="utf-8"><title>Admin login</title></head><body>
-<h2>Admin login</h2>
-<form id="f">
-<input id="u" placeholder="username"><br><br>
-<input id="p" placeholder="password" type="password"><br><br>
-<button type="button" onclick="login()">Login</button>
-</form>
-<script>
-async function login(){
-  const u=document.getElementById('u').value;
-  const p=document.getElementById('p').value;
-  const r=await fetch('/admin/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p}),credentials:'include'});
-  if(r.ok){ location.href='/admin'; } else { alert('auth failed'); }
-}
-</script>
-</body></html>`
 }

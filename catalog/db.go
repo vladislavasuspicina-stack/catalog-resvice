@@ -33,19 +33,21 @@ type Category struct {
 }
 
 type Product struct {
-	ID          uint      `gorm:"primaryKey" json:"id"`
-	Name        string    `json:"name"`
-	Description string    `json:"description"`
-	Price       float64   `json:"price"`
-	Stock       int       `json:"stock"`
-	CategoryID  *uint     `json:"category_id"`
-	ImageURL    *string   `json:"image_url"`
-	Brand       string    `json:"brand"`
-	Color       string    `json:"color"`
-	Condition   string    `json:"condition"`
-	Country     string    `json:"country"`
-	Material    string    `json:"material"`
-	CreatedAt   time.Time `json:"created_at"`
+	ID          uint       `gorm:"primaryKey" json:"id"`
+	Name        string     `json:"name"`
+	Description string     `json:"description"`
+	Price       float64    `json:"price"`
+	Stock       int        `json:"stock"`
+	CategoryID  *uint      `json:"category_id"`
+	CategoryIDs []uint     `gorm:"-" json:"category_ids,omitempty"`
+	Categories  []Category `gorm:"many2many:product_categories;" json:"categories,omitempty"`
+	ImageURL    *string    `json:"image_url"`
+	Brand       string     `json:"brand"`
+	Color       string     `json:"color"`
+	Condition   string     `json:"condition"`
+	Country     string     `json:"country"`
+	Material    string     `json:"material"`
+	CreatedAt   time.Time  `json:"created_at"`
 }
 
 type User struct {
@@ -66,6 +68,7 @@ type CartItem struct {
 
 type Order struct {
 	ID            uint        `gorm:"primaryKey" json:"id"`
+	UserID        *uint       `json:"user_id,omitempty" gorm:"index"`
 	CustomerName  string      `json:"customer_name"`
 	Email         string      `json:"email"`
 	Phone         string      `json:"phone"`
@@ -119,7 +122,28 @@ func InitDB() {
 	}
 	DB = db
 	fmt.Println("DB connected:", DBPath)
+	backfillProductCategories()
 	ensureAdminData()
+}
+
+func backfillProductCategories() {
+	var products []Product
+	DB.Where("category_id IS NOT NULL").Find(&products)
+	for i := range products {
+		if products[i].CategoryID == nil {
+			continue
+		}
+		var count int64
+		DB.Table("product_categories").
+			Where("product_id = ? AND category_id = ?", products[i].ID, *products[i].CategoryID).
+			Count(&count)
+		if count == 0 {
+			var category Category
+			if err := DB.First(&category, *products[i].CategoryID).Error; err == nil {
+				DB.Model(&products[i]).Association("Categories").Append(&category)
+			}
+		}
+	}
 }
 
 // ==================== ADMIN SETUP ====================

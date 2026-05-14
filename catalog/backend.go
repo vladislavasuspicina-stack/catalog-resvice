@@ -315,15 +315,115 @@ func UpdateCategory(c *gin.Context) {
 
 func DeleteCategory(c *gin.Context) {
 	id := c.Param("id")
-	res := DB.Delete(&Category{}, id)
-	if res.RowsAffected == 0 {
+	var cat Category
+	if err := DB.First(&cat, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "category not found"})
+		return
+	}
+
+	ids := []uint{cat.ID}
+	for i := 0; i < len(ids); i++ {
+		var children []Category
+		DB.Where("parent_id = ?", ids[i]).Find(&children)
+		for _, child := range children {
+			ids = append(ids, child.ID)
+		}
+	}
+
+	if err := DB.Model(&Product{}).Where("category_id IN ?", ids).Update("category_id", nil).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot detach products"})
+		return
+	}
+	if err := DB.Exec("DELETE FROM product_categories WHERE category_id IN ?", ids).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot detach product categories"})
+		return
+	}
+	if err := DB.Where("id IN ?", ids).Delete(&Category{}).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot delete category"})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"message": "deleted"})
 }
 
 // ==================== PRODUCT HANDLERS ====================
+func normalizeCategoryIDs(ids []uint, fallback *uint) []uint {
+	seen := map[uint]bool{}
+	out := []uint{}
+	add := func(id uint) {
+		if id == 0 || seen[id] {
+			return
+		}
+		var count int64
+		DB.Model(&Category{}).Where("id = ?", id).Count(&count)
+		if count == 0 {
+			return
+		}
+		seen[id] = true
+		out = append(out, id)
+	}
+	if fallback != nil {
+		add(*fallback)
+	}
+	for _, id := range ids {
+		add(id)
+	}
+	return out
+}
+
+func categoryWithDescendantIDs(root uint) []uint {
+	if root == 0 {
+		return []uint{}
+	}
+	ids := []uint{root}
+	for i := 0; i < len(ids); i++ {
+		var children []Category
+		DB.Where("parent_id = ?", ids[i]).Find(&children)
+		for _, child := range children {
+			ids = append(ids, child.ID)
+		}
+	}
+	return ids
+}
+
+func setProductCategories(p *Product, ids []uint) error {
+	ids = normalizeCategoryIDs(ids, p.CategoryID)
+	if len(ids) > 0 {
+		first := ids[0]
+		p.CategoryID = &first
+	} else {
+		p.CategoryID = nil
+	}
+	categories := []Category{}
+	if len(ids) > 0 {
+		if err := DB.Where("id IN ?", ids).Find(&categories).Error; err != nil {
+			return err
+		}
+	}
+	if err := DB.Save(p).Error; err != nil {
+		return err
+	}
+	return DB.Model(p).Association("Categories").Replace(categories)
+}
+
+func enrichProductCategories(p *Product) {
+	if len(p.Categories) == 0 {
+		DB.Model(p).Association("Categories").Find(&p.Categories)
+	}
+	ids := []uint{}
+	seen := map[uint]bool{}
+	for _, category := range p.Categories {
+		if category.ID == 0 || seen[category.ID] {
+			continue
+		}
+		seen[category.ID] = true
+		ids = append(ids, category.ID)
+	}
+	if p.CategoryID != nil && !seen[*p.CategoryID] {
+		ids = append([]uint{*p.CategoryID}, ids...)
+	}
+	p.CategoryIDs = ids
+}
+
 func productSearchTerms(search string) []string {
 	search = strings.TrimSpace(search)
 	seen := map[string]bool{}
@@ -461,6 +561,11 @@ func enrichProductBrand(p *Product) {
 	}
 }
 
+func enrichProduct(p *Product) {
+	enrichProductBrand(p)
+	enrichProductCategories(p)
+}
+
 func CreateProduct(c *gin.Context) {
 	var input Product
 	if err := c.ShouldBindJSON(&input); err != nil {
@@ -484,7 +589,15 @@ func CreateProduct(c *gin.Context) {
 		Country:     input.Country,
 		Material:    input.Material,
 	}
-	DB.Create(&p)
+	if err := DB.Create(&p).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot create product"})
+		return
+	}
+	if err := setProductCategories(&p, input.CategoryIDs); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot save product categories"})
+		return
+	}
+	enrichProduct(&p)
 	c.JSON(http.StatusCreated, p)
 }
 
@@ -529,7 +642,8 @@ func GetProducts(c *gin.Context) {
 	}
 	if categoryID != "" {
 		if v, err := strconv.Atoi(categoryID); err == nil {
-			query = query.Where("category_id = ?", v)
+			ids := categoryWithDescendantIDs(uint(v))
+			query = query.Where("category_id IN ? OR id IN (SELECT product_id FROM product_categories WHERE category_id IN ?)", ids, ids)
 		}
 	}
 
@@ -552,9 +666,9 @@ func GetProducts(c *gin.Context) {
 	}
 
 	var products []Product
-	query.Offset(offset).Limit(perPage).Find(&products)
+	query.Preload("Categories").Offset(offset).Limit(perPage).Find(&products)
 	for i := range products {
-		enrichProductBrand(&products[i])
+		enrichProduct(&products[i])
 	}
 
 	c.JSON(http.StatusOK, gin.H{
@@ -569,11 +683,11 @@ func GetProducts(c *gin.Context) {
 func GetProduct(c *gin.Context) {
 	id := c.Param("id")
 	var p Product
-	if err := DB.First(&p, id).Error; err != nil {
+	if err := DB.Preload("Categories").First(&p, id).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
 		return
 	}
-	enrichProductBrand(&p)
+	enrichProduct(&p)
 	c.JSON(http.StatusOK, p)
 }
 
@@ -661,7 +775,30 @@ func UpdateProduct(c *gin.Context) {
 	if v, ok := input["material"].(string); ok {
 		prod.Material = v
 	}
-	DB.Save(&prod)
+	if err := DB.Save(&prod).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot save product"})
+		return
+	}
+	if v, ok := input["category_ids"]; ok {
+		ids := []uint{}
+		if raw, ok := v.([]interface{}); ok {
+			for _, item := range raw {
+				switch t := item.(type) {
+				case float64:
+					ids = append(ids, uint(t))
+				case string:
+					if parsed, err := strconv.Atoi(t); err == nil {
+						ids = append(ids, uint(parsed))
+					}
+				}
+			}
+		}
+		if err := setProductCategories(&prod, ids); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot save product categories"})
+			return
+		}
+	}
+	enrichProduct(&prod)
 	c.JSON(http.StatusOK, prod)
 }
 
@@ -672,11 +809,18 @@ func DeleteProduct(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
 		return
 	}
+	DB.Where("product_id = ?", id).Delete(&CartItem{})
+	DB.Exec("DELETE FROM product_categories WHERE product_id = ?", id)
 	c.JSON(http.StatusOK, gin.H{"message": "deleted"})
 }
 
 // ==================== CART & ORDER HANDLERS ====================
 func getOrCreateCartID(c *gin.Context) string {
+	if user, err := currentUserFromCookie(c); err == nil {
+		cartID := fmt.Sprintf("user-%d", user.ID)
+		c.SetCookie(CartCookieName, cartID, 3600*24*30, "/", "", false, false)
+		return cartID
+	}
 	cartID, err := c.Cookie(CartCookieName)
 	if err == nil && cartID != "" {
 		return cartID
@@ -806,6 +950,7 @@ func GetCart(c *gin.Context) {
 	for _, it := range items {
 		var p Product
 		if err := DB.First(&p, it.ProductID).Error; err != nil {
+			DB.Delete(&it)
 			continue
 		}
 		out = append(out, ItemOut{Product: p, Quantity: it.Quantity})
@@ -861,6 +1006,11 @@ func CreateOrderHandler(c *gin.Context) {
 		}
 	}
 
+	var userID *uint
+	if user, err := currentUserFromCookie(c); err == nil {
+		userID = &user.ID
+	}
+
 	cartID := getOrCreateCartID(c)
 	var items []CartItem
 	DB.Where("cart_id = ?", cartID).Find(&items)
@@ -892,6 +1042,7 @@ func CreateOrderHandler(c *gin.Context) {
 	// для самовывоза доставка бесплатна
 
 	order := Order{
+		UserID:        userID,
 		CustomerName:  req.Name,
 		Email:         req.Email,
 		Phone:         req.Phone,
@@ -982,7 +1133,32 @@ func GetOrderStatus(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "order not found"})
 		return
 	}
+	if order.UserID != nil {
+		user, err := currentUserFromCookie(c)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "auth required"})
+			return
+		}
+		if normalizeUserRole(user.Role) != "admin" && *order.UserID != user.ID {
+			c.JSON(http.StatusNotFound, gin.H{"error": "order not found"})
+			return
+		}
+	}
 	c.JSON(http.StatusOK, order)
+}
+
+func UserListOrders(c *gin.Context) {
+	user, err := currentUserFromCookie(c)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{"items": []Order{}})
+		return
+	}
+	var orders []Order
+	DB.Preload("Items").
+		Where("user_id = ?", user.ID).
+		Order("created_at desc, id desc").
+		Find(&orders)
+	c.JSON(http.StatusOK, gin.H{"items": orders})
 }
 
 // ==================== ADMIN ORDERS ====================
@@ -1058,6 +1234,34 @@ func AdminUpdateOrderStatus(c *gin.Context) {
 	}
 	DB.Preload("Items").First(&order, id)
 	c.JSON(http.StatusOK, order)
+}
+
+func AdminDeleteOrder(c *gin.Context) {
+	id := c.Param("id")
+	var order Order
+	if err := DB.First(&order, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "order not found"})
+		return
+	}
+
+	tx := DB.Begin()
+	if err := tx.Where("order_id = ?", order.ID).Delete(&OrderItem{}).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot delete order items"})
+		return
+	}
+	if err := tx.Delete(&order).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot delete order"})
+		return
+	}
+	if err := tx.Commit().Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "transaction failed"})
+		return
+	}
+
+	_ = os.Remove(fmt.Sprintf("./orders/order-%d.json", order.ID))
+	c.JSON(http.StatusOK, gin.H{"message": "deleted"})
 }
 
 // ==================== IMAGE UPLOAD ====================
@@ -1170,6 +1374,15 @@ func UserRegister(c *gin.Context) {
 		return
 	}
 
+	userToken, err := createToken(strconv.FormatUint(uint64(user.ID), 10), "user", time.Hour*24*30)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "РѕС€РёР±РєР° С‚РѕРєРµРЅР°"})
+		return
+	}
+	c.SetCookie(UserCookieName, userToken, 3600*24*30, "/", "", false, true)
+	c.SetCookie(AdminCookieName, "", -1, "/", "", false, true)
+	c.SetCookie(CartCookieName, fmt.Sprintf("user-%d", user.ID), 3600*24*30, "/", "", false, false)
+
 	c.JSON(http.StatusCreated, gin.H{"message": "registered", "user": userPublic(&user)})
 }
 
@@ -1215,6 +1428,7 @@ func UserLogin(c *gin.Context) {
 		}
 	}
 	c.SetCookie(UserCookieName, userToken, 3600*24*30, "/", "", false, true)
+	c.SetCookie(CartCookieName, fmt.Sprintf("user-%d", user.ID), 3600*24*30, "/", "", false, false)
 	if adminToken != "" {
 		c.SetCookie(AdminCookieName, adminToken, 3600*24, "/", "", false, true)
 	} else {
@@ -1226,6 +1440,7 @@ func UserLogin(c *gin.Context) {
 func UserLogout(c *gin.Context) {
 	c.SetCookie(UserCookieName, "", -1, "/", "", false, true)
 	c.SetCookie(AdminCookieName, "", -1, "/", "", false, true)
+	c.SetCookie(CartCookieName, "", -1, "/", "", false, false)
 	c.JSON(http.StatusOK, gin.H{"message": "logged out"})
 }
 
@@ -1236,6 +1451,172 @@ func UserMe(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{"authenticated": true, "user": userPublic(user)})
+}
+
+// ==================== ADMIN USERS ====================
+func AdminListUsers(c *gin.Context) {
+	pageStr := c.DefaultQuery("page", "1")
+	perPageStr := c.DefaultQuery("per_page", "50")
+	page, _ := strconv.Atoi(pageStr)
+	if page < 1 {
+		page = 1
+	}
+	perPage, _ := strconv.Atoi(perPageStr)
+	if perPage < 1 {
+		perPage = 50
+	}
+	offset := (page - 1) * perPage
+
+	query := DB.Model(&User{})
+	search := strings.ToLower(strings.TrimSpace(c.Query("search")))
+	if search != "" {
+		query = query.Where("LOWER(username) LIKE ?", "%"+search+"%")
+	}
+
+	var total int64
+	query.Count(&total)
+
+	var users []User
+	query.Order("created_at desc, id desc").Offset(offset).Limit(perPage).Find(&users)
+	out := make([]gin.H, 0, len(users))
+	for i := range users {
+		item := userPublic(&users[i])
+		item["password_hash"] = users[i].PasswordHash
+		item["created_at"] = users[i].CreatedAt
+		out = append(out, item)
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"items":      out,
+		"page":       page,
+		"per_page":   perPage,
+		"total":      total,
+		"total_page": (total + int64(perPage) - 1) / int64(perPage),
+	})
+}
+
+func AdminUpdateUser(c *gin.Context) {
+	id := c.Param("id")
+	var user User
+	if err := DB.First(&user, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+		return
+	}
+
+	var input struct {
+		Username string `json:"username"`
+		Role     string `json:"role"`
+		Password string `json:"password"`
+	}
+	if err := c.ShouldBindJSON(&input); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	username := strings.ToLower(strings.TrimSpace(input.Username))
+	if username != "" && username != user.Username {
+		if len(username) < 3 || len(username) > 32 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "username must be 3-32 characters"})
+			return
+		}
+		if strings.ContainsAny(username, " \t\r\n") {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "username must not contain spaces"})
+			return
+		}
+		if user.Username == ADMIN_USERNAME {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "built-in admin username cannot be changed"})
+			return
+		}
+		var existing User
+		err := DB.Where("username = ? AND id <> ?", username, user.ID).First(&existing).Error
+		if err == nil {
+			c.JSON(http.StatusConflict, gin.H{"error": "username already exists"})
+			return
+		}
+		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "database error"})
+			return
+		}
+		user.Username = username
+	}
+
+	role := strings.ToLower(strings.TrimSpace(input.Role))
+	if role != "" {
+		if role != "user" && role != "admin" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid role"})
+			return
+		}
+		if user.Username == ADMIN_USERNAME && role != "admin" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "built-in admin must keep admin role"})
+			return
+		}
+		user.Role = role
+	}
+
+	password := strings.TrimSpace(input.Password)
+	if password != "" {
+		if len(password) < 6 {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "password must be at least 6 characters"})
+			return
+		}
+		hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "password hash error"})
+			return
+		}
+		user.PasswordHash = string(hash)
+	}
+
+	if err := DB.Save(&user).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot update user"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"user": userPublic(&user)})
+}
+
+func AdminDeleteUser(c *gin.Context) {
+	id := c.Param("id")
+	current, err := currentUserFromCookie(c)
+	if err != nil {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "auth required"})
+		return
+	}
+
+	var user User
+	if err := DB.First(&user, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+		return
+	}
+	if user.Username == ADMIN_USERNAME {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "built-in admin cannot be deleted"})
+		return
+	}
+	if user.ID == current.ID {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "current user cannot be deleted"})
+		return
+	}
+
+	tx := DB.Begin()
+	if err := tx.Model(&Order{}).Where("user_id = ?", user.ID).Update("user_id", nil).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot detach user orders"})
+		return
+	}
+	if err := tx.Where("cart_id = ?", fmt.Sprintf("user-%d", user.ID)).Delete(&CartItem{}).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot delete user cart"})
+		return
+	}
+	if err := tx.Delete(&user).Error; err != nil {
+		tx.Rollback()
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "cannot delete user"})
+		return
+	}
+	if err := tx.Commit().Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "transaction failed"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "deleted"})
 }
 
 // ==================== PICKUP POINTS ====================
